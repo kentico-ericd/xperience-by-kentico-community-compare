@@ -1,0 +1,40 @@
+{
+  "name": "xperiencecommunity-compare",
+  "version": "1.0.0",
+  "description": "<TODO>",
+  "private": true,
+  "scripts": {
+    "start": "webpack serve --mode development",
+    "build": "webpack --mode=production"
+  },
+  "dependencies": {
+    "@kentico/xperience-admin-base": "31.5.0",
+    "@kentico/xperience-admin-components": "31.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/plugin-transform-runtime": "^7.29.0",
+    "@babel/preset-env": "^7.29.3",
+    "@babel/preset-react": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
+    "@kentico/xperience-webpack-config": "31.5.0",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "babel-loader": "^10.1.1",
+    "webpack": "5.106.2",
+    "webpack-cli": "^7.0.2",
+    "webpack-dev-server": "^5.2.3"
+  },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react"
+  },
+  "browserslist": [
+    "> .2% and last 3 versions",
+    "not op_mini all",
+    "not IE 11"
+  ]
+}
+

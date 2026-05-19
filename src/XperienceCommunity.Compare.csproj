@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+	<LangVersion>latest</LangVersion>
+    <AdminOrgName>xperiencecommunity</AdminOrgName>
+	<RootNamespace>XperienceCommunity.Compare</RootNamespace>
+  </PropertyGroup>
+	
+  <ItemGroup>
+    <AdminClientPath Include="Client\dist\**">
+      <ProjectName>compare</ProjectName>
+    </AdminClientPath>
+  </ItemGroup>
+	
+  <ItemGroup>
+    <Compile Remove="Client\node_modules\**" />
+    <EmbeddedResource Remove="Client\node_modules\**" />
+    <None Remove="Client\node_modules\**" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <PackageReference Include="DiffPlex" />
+	<PackageReference Include="Kentico.Xperience.Admin" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <AssemblyAttribute Include="CMS.AssemblyDiscoverableAttribute"></AssemblyAttribute>
+  </ItemGroup>
+</Project>
