@@ -5,6 +5,8 @@ using Kentico.Xperience.Admin.Base;
 using Kentico.Xperience.Admin.Base.Authentication;
 using Kentico.Xperience.Admin.Websites.UIPages;
 
+using XperienceCommunity.Compare.Models;
+using XperienceCommunity.Compare.Services;
 using XperienceCommunity.Compare.UIPages;
 
 [assembly: UIPage(
@@ -22,12 +24,13 @@ namespace XperienceCommunity.Compare.UIPages;
 /// Template for the web page "Compare" tab.
 /// </summary>
 public class WebPageCompareTab(
-        IAuthenticatedUserAccessor authenticatedUserAccessor,
-        IPageLinkGenerator pageLinkGenerator,
-        IWebPageManagerFactory webPageManagerFactory) : WebPageBase<WebPageCompareTabProperties>(
-                authenticatedUserAccessor,
-                webPageManagerFactory,
-                pageLinkGenerator)
+    IComparableDataRetriever comparableDataRetriever,
+    IAuthenticatedUserAccessor authenticatedUserAccessor,
+    IWebPageManagerFactory webPageManagerFactory,
+    IPageLinkGenerator pageLinkGenerator) : WebPageBase<WebPageCompareTabProperties>(
+            authenticatedUserAccessor,
+            webPageManagerFactory,
+            pageLinkGenerator)
 {
     public const string SLUG = "compare";
 
@@ -50,15 +53,20 @@ public class WebPageCompareTab(
             RedirectTo(typeof(CreateLanguageVariant), properties);
         }
 
+        var sourcePageComparableData = await comparableDataRetriever.GetComparableWebPageData(
+            WebPageIdentifier.WebPageItemID,
+            WebPageIdentifier.LanguageName,
+            ApplicationIdentifier.WebsiteChannelID);
+
         return properties;
     }
 
 
     [PageCommand]
-    public async Task<ICommandResponse<CompareResult>> Compare(string input)
+    public async Task<ICommandResponse<CompareResult>> Compare(CompareRequest request)
     {
         // Here is where we'll compare
-        return ResponseFrom(new CompareResult { Result = input.ToUpper() });
+        return ResponseFrom(new CompareResult());
     }
 
 
@@ -72,9 +80,6 @@ public class WebPageCompareTab(
         properties.RedirectUrl = pageLinkGenerator.GetPath(targetPage, parameters);
     }
 }
-
-
-public readonly record struct CompareResult(string Result);
 
 
 public class WebPageCompareTabProperties : WebPageBaseClientProperties
