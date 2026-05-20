@@ -53,7 +53,7 @@ public class WebPageCompareTab(
             RedirectTo(typeof(CreateLanguageVariant), properties);
         }
 
-        var sourcePageComparableData = await comparableDataRetriever.GetComparableWebPageData(
+        properties.SourcePageData = await comparableDataRetriever.GetComparableWebPageData(
             WebPageIdentifier.WebPageItemID,
             WebPageIdentifier.LanguageName,
             ApplicationIdentifier.WebsiteChannelID);
@@ -79,11 +79,6 @@ public class WebPageCompareTab(
         };
         properties.RedirectUrl = pageLinkGenerator.GetPath(targetPage, parameters);
     }
-}
-
-
-public class WebPageCompareTabProperties : WebPageBaseClientProperties
-{
 }
 
 
