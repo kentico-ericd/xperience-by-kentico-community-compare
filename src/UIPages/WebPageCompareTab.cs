@@ -14,7 +14,7 @@ using XperienceCommunity.Compare.UIPages;
     WebPageCompareTab.SLUG,
     typeof(WebPageCompareTab),
     "Compare",
-    "@xperiencecommunity/compare/CompareTab",
+    "@xperiencecommunity/compare/WebPageCompareTab",
     999,
     Icon = Icons.DocCopy)]
 [assembly: PageExtender(typeof(WebPageLayoutExtender))]

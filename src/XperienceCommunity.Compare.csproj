@@ -30,8 +30,4 @@
   <ItemGroup>
     <AssemblyAttribute Include="CMS.AssemblyDiscoverableAttribute"></AssemblyAttribute>
   </ItemGroup>
-	
-  <ItemGroup>
-    <Folder Include="Client\src\types\" />
-  </ItemGroup>
 </Project>

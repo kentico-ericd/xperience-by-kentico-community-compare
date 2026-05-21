@@ -5,6 +5,10 @@ export interface WebPageCompareTabProperties {
 }
 
 export interface CompareRequest {
+    sourceLanguageName?: string;
+    targetLanguageName?: string;
+    sourceWorkflowStepID?: number;
+    targetWorkflowStepID?: number;
 }
 
 export interface CompareResult {
