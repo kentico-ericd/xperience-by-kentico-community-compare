@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11806.211 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XperienceCommunity.Compare", "src\XperienceCommunity.Compare.csproj", "{CE6AC146-DBE9-7935-9AFB-E65F5F4E4108}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CE6AC146-DBE9-7935-9AFB-E65F5F4E4108}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE6AC146-DBE9-7935-9AFB-E65F5F4E4108}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE6AC146-DBE9-7935-9AFB-E65F5F4E4108}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE6AC146-DBE9-7935-9AFB-E65F5F4E4108}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E0715A38-93E2-4C4F-958D-543ADBEC95C8}
+	EndGlobalSection
+EndGlobal

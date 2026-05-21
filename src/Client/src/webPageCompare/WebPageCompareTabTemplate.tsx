@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ReactDiffViewer from 'react-diff-viewer';
 import {
     Box,
     Button,
@@ -27,6 +28,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         sourceLanguageName: props.sourcePageData.languageName,
         sourceWorkflowStepID: props.sourcePageData.currentWorkflowStep
     };
+    const [compareResult, setCompareResult] = useState<CompareResult>();
     const [targetLanguageName, setTargetLanguageName] = useState(props.sourcePageData.languageName);
     const [targetWorkflowStepId, setTargetWorkflowStepId] = useState(0);
     const { execute: compare } = usePageCommand<CompareResult, CompareRequest>(Commands.Compare, {
@@ -34,8 +36,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
             compareRequest.targetLanguageName = targetLanguageName;
             compareRequest.targetWorkflowStepID = targetWorkflowStepId;
         },
-        after: result => {
-        },
+        after: setCompareResult,
         data: compareRequest
     });
 
@@ -46,8 +47,8 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         .find(s => s.stepID === props.sourcePageData.currentWorkflowStep)?.stepDisplayName ?? '(Current workflow step)';
 
     return (
-        <Stack spacing={Spacing.XL}>
-            <Row spacing={Spacing.XL}>
+        <Stack>
+            <Row>
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
                         <Headline size={HeadlineSize.L}>This page</Headline>
@@ -97,6 +98,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                 placeholder='(Select workflow step)'
                                 onChange={(e) => setTargetWorkflowStepId(Number.parseInt(e ?? ''))}>
                                 {
+                                    //TODO: If page has no workflow, dropdown is empty
                                     props.sourcePageData.workflowSteps.map(s =>
                                         <MenuItem
                                             primaryLabel={s.stepDisplayName}
@@ -107,7 +109,20 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                         </Row>
                     </Box>
                 </Column>
-             </Row>
+            </Row>
+
+            <Stack>
+                {compareResult &&
+                    compareResult.fields.map(f =>
+                        <Box spacing={Spacing.L}>
+                            <Row alignX={LayoutAlignment.Center}>
+                                <Headline size={HeadlineSize.L}>{f.fieldName}</Headline>
+                                <ReactDiffViewer oldValue={f.sourceValue} newValue={f.targetValue} splitView={true} />
+                            </Row>
+                        </Box>
+                    )
+                }
+            </Stack>
         </Stack>
     );
 };

@@ -4,5 +4,5 @@ namespace XperienceCommunity.Compare.Models;
 
 public class WebPageCompareTabProperties : WebPageBaseClientProperties
 {
-    public ComparableWebPageData? SourcePageData { get; set; }
+    public SourceWebPageData? SourcePageData { get; set; }
 }

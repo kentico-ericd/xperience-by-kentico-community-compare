@@ -6,7 +6,6 @@
     <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="DiffPlex" Version="1.9.0" />
     <PackageVersion Include="Kentico.Xperience.Admin" Version="31.5.0" />
     <PackageVersion Include="Kentico.Xperience.WebApp" Version="31.5.0" />
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.20.0.135146" />

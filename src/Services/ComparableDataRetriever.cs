@@ -15,13 +15,13 @@ public class ComparableDataRetriever(
     IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
     IInfoProvider<ContentWorkflowStepInfo> contentWorkflowStepInfoProvider) : IComparableDataRetriever
 {
-    public async Task<ComparableWebPageData> GetComparableWebPageData(int webPageId, string languageName, int websiteChannelId)
+    public async Task<SourceWebPageData> GetSourceWebPageData(int webPageId, string languageName, int websiteChannelId)
     {
         // Get languages
         var languages = await contentLanguageInfoProvider.Get().GetEnumerableTypedResultAsync();
         var webPageLanguage = languages.FirstOrDefault(l => l.ContentLanguageName.Equals(languageName, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Language '({languageName})' not found.");
-        var data = new ComparableWebPageData
+        var data = new SourceWebPageData
         {
             LanguageName = languageName,
             Languages = languages.Select(l =>
@@ -55,6 +55,16 @@ public class ComparableDataRetriever(
 
         return data;
     }
+
+
+    public async Task<CompareResult> GetWebPageCompareResult(CompareRequest compareRequest) =>
+        new()
+        {
+            Fields = [
+                new("TestField", "Source value", "Target value"),
+                new("TestField2", "Source value2", "Target value2")
+            ]
+        };
 
 
     //TODO: Limit columns of query

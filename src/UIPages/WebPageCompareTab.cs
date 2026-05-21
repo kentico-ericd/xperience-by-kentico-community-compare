@@ -53,7 +53,7 @@ public class WebPageCompareTab(
             RedirectTo(typeof(CreateLanguageVariant), properties);
         }
 
-        properties.SourcePageData = await comparableDataRetriever.GetComparableWebPageData(
+        properties.SourcePageData = await comparableDataRetriever.GetSourceWebPageData(
             WebPageIdentifier.WebPageItemID,
             WebPageIdentifier.LanguageName,
             ApplicationIdentifier.WebsiteChannelID);
@@ -63,11 +63,8 @@ public class WebPageCompareTab(
 
 
     [PageCommand]
-    public async Task<ICommandResponse<CompareResult>> Compare(CompareRequest request)
-    {
-        // Here is where we'll compare
-        return ResponseFrom(new CompareResult());
-    }
+    public async Task<ICommandResponse<CompareResult>> Compare(CompareRequest request) =>
+        ResponseFrom(await comparableDataRetriever.GetWebPageCompareResult(request));
 
 
     private void RedirectTo(Type targetPage, WebPageCompareTabProperties properties)

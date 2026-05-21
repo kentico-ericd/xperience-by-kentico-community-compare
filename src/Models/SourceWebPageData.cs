@@ -1,6 +1,6 @@
 ﻿namespace XperienceCommunity.Compare.Models;
 
-public class ComparableWebPageData
+public class SourceWebPageData
 {
     public string? LanguageName { get; set; }
 
