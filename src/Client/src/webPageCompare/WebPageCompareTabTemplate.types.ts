@@ -5,29 +5,28 @@ export interface WebPageCompareTabProperties {
 }
 
 export interface CompareRequest {
-    sourceLanguageName?: string;
+    webPageID: number;
+    channelName: string;
+    contentTypeClassID: number;
+    sourceLanguageName: string;
     targetLanguageName?: string;
-    sourceWorkflowStepID?: number;
-    targetWorkflowStepID?: number;
+    sourceVersionStatus: VersionStatus;
+    targetVersionStatus?: VersionStatus;
 }
 
-export interface CompareResult {
+export interface ComparableWebPageData {
     readonly fields: Field[];
 }
 
 export interface SourceWebPageData {
+    readonly webPageID: number;
+    readonly channelName: string;
+    readonly contentTypeClassID: number;
     readonly languageName: string;
-    readonly versionStatus: number;
-    readonly isUnderWorkflow: boolean;
-    readonly currentWorkflowStep: number;
-    readonly workflowSteps: WorkflowStep[];
+    readonly versionStatus: VersionStatus;
     readonly languages: ContentLanguage[];
 }
 
-export interface WorkflowStep {
-    readonly stepID: number;
-    readonly stepDisplayName: string;
-}
 
 export interface ContentLanguage {
     readonly languageName: string;
@@ -39,4 +38,13 @@ export interface Field {
     readonly fieldName: string;
     readonly sourceValue: string;
     readonly targetValue: string;
+}
+
+export enum VersionStatus {
+
+    InitialDraft,
+    Draft,
+    Published,
+    Unpublished,
+    NotTranslated
 }

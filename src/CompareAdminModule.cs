@@ -1,6 +1,6 @@
-﻿using XperienceCommunity.Compare;
+﻿using Kentico.Xperience.Admin.Base;
 
-using Kentico.Xperience.Admin.Base;
+using XperienceCommunity.Compare;
 
 [assembly: CMS.RegisterModule(typeof(CompareAdminModule))]
 namespace XperienceCommunity.Compare;

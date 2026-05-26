@@ -1,4 +1,10 @@
-﻿using CMS.Websites;
+﻿using CMS.ContentEngine;
+using CMS.ContentEngine.Internal;
+using CMS.ContentWorkflowEngine;
+using CMS.ContentWorkflowEngine.Internal;
+using CMS.DataEngine;
+using CMS.Helpers;
+using CMS.Websites;
 using CMS.Websites.Internal;
 
 using Kentico.Xperience.Admin.Base;
@@ -24,6 +30,11 @@ namespace XperienceCommunity.Compare.UIPages;
 /// Template for the web page "Compare" tab.
 /// </summary>
 public class WebPageCompareTab(
+    ICoveringWorkflowRetriever coveringWorkflowRetriever,
+    IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
+    IInfoProvider<ContentWorkflowStepInfo> contentWorkflowStepInfoProvider,
+    IInfoProvider<ChannelInfo> channelInfoProvider,
+    IInfoProvider<WebsiteChannelInfo> websiteChannelInfoProvider,
     IComparableDataRetriever comparableDataRetriever,
     IAuthenticatedUserAccessor authenticatedUserAccessor,
     IWebPageManagerFactory webPageManagerFactory,
@@ -53,7 +64,7 @@ public class WebPageCompareTab(
             RedirectTo(typeof(CreateLanguageVariant), properties);
         }
 
-        properties.SourcePageData = await comparableDataRetriever.GetSourceWebPageData(
+        properties.SourcePageData = await GetSourceWebPageData(
             WebPageIdentifier.WebPageItemID,
             WebPageIdentifier.LanguageName,
             ApplicationIdentifier.WebsiteChannelID);
@@ -63,7 +74,7 @@ public class WebPageCompareTab(
 
 
     [PageCommand]
-    public async Task<ICommandResponse<CompareResult>> Compare(CompareRequest request) =>
+    public async Task<ICommandResponse<ComparableWebPageData>> Compare(CompareRequest request) =>
         ResponseFrom(await comparableDataRetriever.GetWebPageCompareResult(request));
 
 
@@ -76,6 +87,59 @@ public class WebPageCompareTab(
         };
         properties.RedirectUrl = pageLinkGenerator.GetPath(targetPage, parameters);
     }
+
+
+    public async Task<SourceWebPageData> GetSourceWebPageData(int webPageId, string languageName, int websiteChannelId)
+    {
+        var data = new SourceWebPageData
+        {
+            WebPageID = webPageId,
+            LanguageName = languageName
+        };
+
+        // Get website channel
+        int channelId = (await websiteChannelInfoProvider.GetAsync(websiteChannelId))?.WebsiteChannelChannelID
+            ?? throw new InvalidOperationException($"Website channel '({websiteChannelId})' not found.");
+        data.ChannelName = (await channelInfoProvider.GetAsync(channelId))?.ChannelName
+            ?? throw new InvalidOperationException($"Channel '({channelId})' not found.");
+
+        // Get languages
+        var languages = await contentLanguageInfoProvider.Get().GetEnumerableTypedResultAsync();
+        var webPageLanguage = languages.FirstOrDefault(l => l.ContentLanguageName.Equals(languageName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"Language '({languageName})' not found.");
+        data.Languages = languages.Select(l =>
+            new ContentLanguage(l.ContentLanguageName, l.ContentLanguageDisplayName, l.ContentLanguageFlagIconName));
+
+        // Get basic web page data
+        var query = GetWebPageDataQuery(webPageId, websiteChannelId, webPageLanguage.ContentLanguageID);
+        var dataContainer = (await query.GetDataContainerResultAsync()).FirstOrDefault()
+            ?? throw new InvalidOperationException($"Failed to retrieve metadata info for web page {webPageId}.");
+        data.VersionStatus = ValidationHelper.GetInteger(
+            dataContainer.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataLatestVersionStatus)),
+            0);
+        data.ContentTypeClassID = ValidationHelper.GetInteger(
+            dataContainer.GetValue(nameof(ContentItemInfo.ContentItemContentTypeID)),
+            0);
+
+        return data;
+    }
+
+
+    //TODO: Limit columns of query
+    private static DataQuery GetWebPageDataQuery(int webPageId, int websiteChannelId, int languageId) =>
+        new DataQuery()
+            .From(new QuerySource(new QuerySourceTable(ContentItemLanguageMetadataInfo.TYPEINFO.ClassStructureInfo.TableName)))
+            .Source(source => source
+                .LeftJoin<ContentItemInfo>(
+                    nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentItemID),
+                    nameof(ContentItemInfo.ContentItemID))
+                .InnerJoin<WebPageItemInfo>(
+                    $"{ContentItemInfo.TYPEINFO.ClassStructureInfo.TableName}.{nameof(ContentItemInfo.ContentItemID)}",
+                    nameof(WebPageItemInfo.WebPageItemContentItemID), new WhereCondition().WhereEquals(nameof(WebPageItemInfo.WebPageItemWebsiteChannelID), websiteChannelId))
+            )
+            .WhereEquals(nameof(WebPageItemInfo.WebPageItemID), webPageId)
+            .WhereEquals(nameof(WebPageItemInfo.WebPageItemWebsiteChannelID), websiteChannelId)
+            .WhereEquals(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentLanguageID), languageId);
 }
 
 

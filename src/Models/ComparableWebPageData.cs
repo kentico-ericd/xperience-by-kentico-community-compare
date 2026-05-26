@@ -1,6 +1,6 @@
 ﻿namespace XperienceCommunity.Compare.Models;
 
-public class CompareResult
+public class ComparableWebPageData
 {
     public IEnumerable<Field> Fields { get; set; } = [];
 }
