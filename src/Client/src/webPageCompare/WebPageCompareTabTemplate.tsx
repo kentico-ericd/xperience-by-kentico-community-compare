@@ -23,16 +23,17 @@ const Commands = {
     Compare: "Compare",
 };
 
+//TODO: Handle exceptions gracefully, ie when the selected target doesn't exist
+//TODO: Show loading screen after button click
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
     const compareRequest: CompareRequest = {
-        webPageID: props.sourcePageData.webPageID,
-        channelName: props.sourcePageData.channelName,
-        contentTypeClassID: props.sourcePageData.contentTypeClassID,
-        sourceLanguageName: props.sourcePageData.languageName,
-        sourceVersionStatus: props.sourcePageData.versionStatus
+        webPageID: props.webPageID,
+        contentTypeClassID: props.contentTypeClassID,
+        sourceLanguageName: props.sourceLanguageName,
+        sourceVersionStatus: props.sourceVersionStatus
     };
     const [comparableData, setComparableData] = useState<ComparableWebPageData>();
-    const [targetLanguageName, setTargetLanguageName] = useState(props.sourcePageData.languageName);
+    const [targetLanguageName, setTargetLanguageName] = useState(props.sourceLanguageName);
     const [targetVersionStatus, setTargetVersionStatus] = useState(0);
     const { execute: compare } = usePageCommand<ComparableWebPageData, CompareRequest>(Commands.Compare, {
         before: () => {
@@ -43,18 +44,38 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         data: compareRequest
     });
 
-    const getSourcePageLanguageDisplayName = () => props.sourcePageData.languages
-        .find(l => l.languageName === props.sourcePageData.languageName)?.languageDisplayName ?? '(Current language)';
+    const getSourcePageLanguageDisplayName = () => props.languages
+        .find(l => l.languageName === props.sourceLanguageName)?.languageDisplayName ?? '(Current language)';
 
     const getSourcePageVersionStatusName = () => {
-        switch (props.sourcePageData.versionStatus) {
+        switch (props.sourceVersionStatus) {
             case VersionStatus.InitialDraft:
             case VersionStatus.Draft: return 'Draft';
             case VersionStatus.Published: return 'Published';
         };
 
         return '(Current version)';
-    }
+    };
+
+    const renderBody = () => {
+        if (comparableData && comparableData.fields.length > 0) {
+            // Ran comparison, differences found
+            return comparableData.fields.map(f =>
+                <Box spacing={Spacing.L}>
+                    <Row alignX={LayoutAlignment.Center}>
+                        <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
+                        <ReactDiffViewer oldValue={f.sourceValue} newValue={f.targetValue} splitView={true} />
+                    </Row>
+                </Box>
+            );
+        }
+        else if (comparableData) {
+            // Ran comparison, no differences found
+            return <Row alignX={LayoutAlignment.Center}>
+                <Headline size={HeadlineSize.L}>Nothing to see here...</Headline>
+            </Row>
+        }
+    };
 
     return (
         <Stack>
@@ -96,7 +117,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                 value={targetLanguageName}
                                 onChange={(e) => setTargetLanguageName(e ?? '')}>
                                 {
-                                    props.sourcePageData.languages.map(l =>
+                                    props.languages.map(l =>
                                         <MenuItem
                                             primaryLabel={l.languageDisplayName}
                                             value={l.languageName} />
@@ -109,10 +130,15 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                 onChange={(e) => setTargetVersionStatus(Number.parseInt(e ?? ''))}>
                                 <MenuItem
                                     primaryLabel='Draft'
-                                    value={VersionStatus.Draft.toString()} />
+                                    value={VersionStatus.Draft.toString()}
+                                    disabled={targetLanguageName === props.sourceLanguageName &&
+                                        props.sourceVersionStatus === VersionStatus.Draft} />
                                     <MenuItem
                                     primaryLabel='Published'
-                                    value={VersionStatus.Published.toString()} />
+                                    value={VersionStatus.Published.toString()}
+                                    disabled={props.sourceVersionStatus == VersionStatus.InitialDraft ||
+                                        (targetLanguageName === props.sourceLanguageName &&
+                                        props.sourceVersionStatus === VersionStatus.Published)} />
                             </Select>
                         </Row>
                     </Box>
@@ -120,16 +146,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
             </Row>
 
             <Stack>
-                {comparableData &&
-                    comparableData.fields.map(f =>
-                        <Box spacing={Spacing.L}>
-                            <Row alignX={LayoutAlignment.Center}>
-                                <Headline size={HeadlineSize.L}>{f.fieldName}</Headline>
-                                <ReactDiffViewer oldValue={f.sourceValue} newValue={f.targetValue} splitView={true} />
-                            </Row>
-                        </Box>
-                    )
-                }
+                {renderBody()}
             </Stack>
         </Stack>
     );

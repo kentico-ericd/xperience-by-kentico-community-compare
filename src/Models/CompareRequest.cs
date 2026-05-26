@@ -7,10 +7,6 @@ public class CompareRequest
     public int WebPageID { get; set; }
 
 
-    //TODO: Channel name not needed?
-    public string? ChannelName { get; set; }
-
-
     public int ContentTypeClassID { get; set; }
 
 

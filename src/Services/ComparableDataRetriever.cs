@@ -44,7 +44,7 @@ public class ComparableDataRetriever(
         {
             bool sourceHasValue = sourcePageFieldValues.TryGetValue(field, out string? sourceValue);
             bool targetHasValue = targetPageFieldValues.TryGetValue(field, out string? targetValue);
-            if (!sourceHasValue || !targetHasValue ||
+            if ((!sourceHasValue && !targetHasValue) ||
                 (sourceValue?.Equals(targetValue) ?? false)) // Skip exact match
             {
                 continue;
@@ -66,8 +66,8 @@ public class ComparableDataRetriever(
     {
         bool isPreview = versionStatus is VersionStatus.Draft or VersionStatus.InitialDraft;
         var builder = new ContentItemQueryBuilder()
-            .ForContentType(className)
-            .InLanguage(languageName)
+            .ForContentType(className, q => q.WithLinkedItems(1))
+            .InLanguage(languageName, false)
             .Parameters(p => p.Where(w => w
                 .WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), contentItemId)));
         var result = await contentQueryExecutor.GetResult(
@@ -90,6 +90,7 @@ public class ComparableDataRetriever(
         var dict = new Dictionary<string, string>();
         foreach (string field in fieldNames)
         {
+            //TODO: Format linked items in human-readable way
             object rawValue = container.GetValue<object>(field);
             string? stringRepresentation = ValidationHelper.GetString(rawValue, null);
             if (!string.IsNullOrEmpty(stringRepresentation))
@@ -102,6 +103,7 @@ public class ComparableDataRetriever(
     }
 
 
+    //TODO: Doesn't get reusable schema fields
     private static IEnumerable<string> GetFieldNamesForCompare(DataClassInfo dataClassInfo) =>
         new FormInfo(dataClassInfo.ClassFormDefinition)
             .GetFields(true, false)

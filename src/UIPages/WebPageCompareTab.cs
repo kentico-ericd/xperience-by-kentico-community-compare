@@ -30,11 +30,7 @@ namespace XperienceCommunity.Compare.UIPages;
 /// Template for the web page "Compare" tab.
 /// </summary>
 public class WebPageCompareTab(
-    ICoveringWorkflowRetriever coveringWorkflowRetriever,
     IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
-    IInfoProvider<ContentWorkflowStepInfo> contentWorkflowStepInfoProvider,
-    IInfoProvider<ChannelInfo> channelInfoProvider,
-    IInfoProvider<WebsiteChannelInfo> websiteChannelInfoProvider,
     IComparableDataRetriever comparableDataRetriever,
     IAuthenticatedUserAccessor authenticatedUserAccessor,
     IWebPageManagerFactory webPageManagerFactory,
@@ -50,8 +46,6 @@ public class WebPageCompareTab(
     {
         await base.ConfigureTemplateProperties(properties);
 
-        properties.PreventRefetch = true;
-
         if (WebPageIdentifier.WebPageItemID == WebPageConstants.ROOT_NODE_ID)
         {
             // If on root, redirect to General tab
@@ -64,7 +58,8 @@ public class WebPageCompareTab(
             RedirectTo(typeof(CreateLanguageVariant), properties);
         }
 
-        properties.SourcePageData = await GetSourceWebPageData(
+        await SetProperties(
+            properties,
             WebPageIdentifier.WebPageItemID,
             WebPageIdentifier.LanguageName,
             ApplicationIdentifier.WebsiteChannelID);
@@ -89,39 +84,29 @@ public class WebPageCompareTab(
     }
 
 
-    public async Task<SourceWebPageData> GetSourceWebPageData(int webPageId, string languageName, int websiteChannelId)
+    public async Task SetProperties(WebPageCompareTabProperties properties, int webPageId, string languageName, int websiteChannelId)
     {
-        var data = new SourceWebPageData
-        {
-            WebPageID = webPageId,
-            LanguageName = languageName
-        };
-
-        // Get website channel
-        int channelId = (await websiteChannelInfoProvider.GetAsync(websiteChannelId))?.WebsiteChannelChannelID
-            ?? throw new InvalidOperationException($"Website channel '({websiteChannelId})' not found.");
-        data.ChannelName = (await channelInfoProvider.GetAsync(channelId))?.ChannelName
-            ?? throw new InvalidOperationException($"Channel '({channelId})' not found.");
+        properties.PreventRefetch = true;
+        properties.WebPageID = webPageId;
+        properties.SourceLanguageName = languageName;
 
         // Get languages
         var languages = await contentLanguageInfoProvider.Get().GetEnumerableTypedResultAsync();
         var webPageLanguage = languages.FirstOrDefault(l => l.ContentLanguageName.Equals(languageName, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Language '({languageName})' not found.");
-        data.Languages = languages.Select(l =>
+        properties.Languages = languages.Select(l =>
             new ContentLanguage(l.ContentLanguageName, l.ContentLanguageDisplayName, l.ContentLanguageFlagIconName));
 
         // Get basic web page data
         var query = GetWebPageDataQuery(webPageId, websiteChannelId, webPageLanguage.ContentLanguageID);
         var dataContainer = (await query.GetDataContainerResultAsync()).FirstOrDefault()
             ?? throw new InvalidOperationException($"Failed to retrieve metadata info for web page {webPageId}.");
-        data.VersionStatus = ValidationHelper.GetInteger(
+        properties.SourceVersionStatus = ValidationHelper.GetInteger(
             dataContainer.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataLatestVersionStatus)),
             0);
-        data.ContentTypeClassID = ValidationHelper.GetInteger(
+        properties.ContentTypeClassID = ValidationHelper.GetInteger(
             dataContainer.GetValue(nameof(ContentItemInfo.ContentItemContentTypeID)),
             0);
-
-        return data;
     }
 
 
