@@ -1,4 +1,5 @@
 ﻿using CMS.ContentEngine;
+using CMS.ContentEngine.Internal;
 using CMS.DataEngine;
 using CMS.FormEngine;
 using CMS.Helpers;
@@ -18,9 +19,9 @@ public class ComparableDataRetriever(
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.SourceLanguageName);
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.TargetLanguageName);
 
-        var dataClassInfo = DataClassInfoProvider.GetDataClassInfo(compareRequest.ContentTypeClassID)
+        string contentTypeName = DataClassInfoProvider.GetDataClassInfo(compareRequest.ContentTypeClassID)?.ClassName
             ?? throw new InvalidOperationException($"Failed to retrieve data class for ID {compareRequest.ContentTypeClassID}.");
-        var fieldNames = GetFieldNamesForCompare(dataClassInfo);
+        var fieldNames = GetFieldNamesForCompare(contentTypeName);
         int contentItemId = GetWebPageContentItemID(compareRequest.WebPageID);
         if (contentItemId == default)
         {
@@ -28,13 +29,13 @@ public class ComparableDataRetriever(
         }
 
         var targetPageFieldValues = await GetWebPageFieldValues(
-            dataClassInfo.ClassName,
+            contentTypeName,
             contentItemId,
             compareRequest.TargetLanguageName,
             compareRequest.TargetVersionStatus,
             fieldNames) ?? throw new InvalidOperationException("Failed to retrieve values for target page.");
         var sourcePageFieldValues = await GetWebPageFieldValues(
-            dataClassInfo.ClassName,
+            contentTypeName,
             contentItemId,
             compareRequest.SourceLanguageName,
             compareRequest.SourceVersionStatus,
@@ -58,7 +59,7 @@ public class ComparableDataRetriever(
 
 
     private async Task<Dictionary<string, string>?> GetWebPageFieldValues(
-        string className,
+        string contentTypeName,
         int contentItemId,
         string languageName,
         VersionStatus versionStatus,
@@ -66,7 +67,7 @@ public class ComparableDataRetriever(
     {
         bool isPreview = versionStatus is VersionStatus.Draft or VersionStatus.InitialDraft;
         var builder = new ContentItemQueryBuilder()
-            .ForContentType(className, q => q.WithLinkedItems(1))
+            .ForContentType(contentTypeName, q => q.WithLinkedItems(1))
             .InLanguage(languageName, false)
             .Parameters(p => p.Where(w => w
                 .WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), contentItemId)));
@@ -103,11 +104,13 @@ public class ComparableDataRetriever(
     }
 
 
-    //TODO: Doesn't get reusable schema fields
-    private static IEnumerable<string> GetFieldNamesForCompare(DataClassInfo dataClassInfo) =>
-        new FormInfo(dataClassInfo.ClassFormDefinition)
-            .GetFields(true, false)
-            .Select(f => f.Name);
+    private static IEnumerable<string> GetFieldNamesForCompare(string contentTypeName)
+    {
+        string prefixedContentTypeName = ReusableFieldSchemaUtils.GetPrefixedContentTypeName(contentTypeName);
+        var formInfoWithSchema = FormHelper.GetFormInfo(prefixedContentTypeName, false);
+
+        return formInfoWithSchema.GetFields(true, false).Select(f => f.Name);
+    }
 
 
     private int GetWebPageContentItemID(int webPageId) =>
