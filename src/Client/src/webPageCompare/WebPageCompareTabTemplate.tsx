@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import ReactDiffViewer from 'react-diff-viewer';
+import React, { useRef, useState } from "react";
+import ReactDiffViewer, { ReactDiffViewerStylesOverride } from 'react-diff-viewer';
 import {
     Box,
     Button,
@@ -23,8 +23,8 @@ const Commands = {
     Compare: "Compare",
 };
 
+//TODO: Render a message if the compare ran, but no differences were found
 //TODO: Handle exceptions gracefully, ie when the selected target doesn't exist
-//TODO: Show loading screen after button click
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
     const compareRequest: CompareRequest = {
         webPageID: props.webPageID,
@@ -32,15 +32,29 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         sourceLanguageName: props.sourceLanguageName,
         sourceVersionStatus: props.sourceVersionStatus
     };
+    let compareButtonOriginalContent: string;
+    const compareButtonRef = useRef<HTMLButtonElement>(null);
     const [comparableData, setComparableData] = useState<ComparableWebPageData>();
     const [targetLanguageName, setTargetLanguageName] = useState(props.sourceLanguageName);
     const [targetVersionStatus, setTargetVersionStatus] = useState(0);
     const { execute: compare } = usePageCommand<ComparableWebPageData, CompareRequest>(Commands.Compare, {
         before: () => {
+            if (compareButtonRef.current) {
+                compareButtonRef.current.disabled = true;
+                compareButtonOriginalContent = compareButtonRef.current.innerHTML;
+                compareButtonRef.current.innerHTML = "Loading...";
+            }
             compareRequest.targetLanguageName = targetLanguageName;
             compareRequest.targetVersionStatus = targetVersionStatus;
         },
-        after: setComparableData,
+        after: data => {
+            if (compareButtonRef.current) {
+                compareButtonRef.current.disabled = false;
+                compareButtonRef.current.innerHTML = compareButtonOriginalContent;
+            }
+
+            setComparableData(data);
+        },
         data: compareRequest
     });
 
@@ -57,25 +71,14 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         return '(Current version)';
     };
 
-    const renderBody = () => {
-        if (comparableData && comparableData.fields.length > 0) {
-            // Ran comparison, differences found
-            return comparableData.fields.map(f =>
-                <Box spacing={Spacing.L}>
-                    <Row alignX={LayoutAlignment.Center}>
-                        <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
-                        <ReactDiffViewer oldValue={f.sourceValue} newValue={f.targetValue} splitView={true} />
-                    </Row>
-                </Box>
-            );
-        }
-        else if (comparableData) {
-            // Ran comparison, no differences found
-            return <Row alignX={LayoutAlignment.Center}>
-                <Headline size={HeadlineSize.L}>Nothing to see here...</Headline>
-            </Row>
-        }
-    };
+    /**
+     * Returns true if the comparison has been executed and at least one difference was found.
+     */
+    const shouldRenderDiffs = () => !!(
+        comparableData &&
+        (comparableData.fields.length > 0 ||
+            (comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets))
+    );
 
     return (
         <Stack>
@@ -98,6 +101,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                     <Row alignX={LayoutAlignment.Center}>
                         <Box spacingY={Spacing.XXXL}>
                             <Button
+                                buttonRef={compareButtonRef}
                                 label='Compare'
                                 color={ButtonColor.Primary}
                                 size={ButtonSize.M}
@@ -145,9 +149,36 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 </Column>
             </Row>
 
-            <Stack>
-                {renderBody()}
-            </Stack>
+            {shouldRenderDiffs() &&
+                <Row>
+                    <Stack>
+                        {comparableData && comparableData.fields.length > 0 && comparableData.fields.map(f =>
+                            <Box spacing={Spacing.L}>
+                                <Row alignX={LayoutAlignment.Center}>
+                                    <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
+                                    <ReactDiffViewer
+                                        splitView={true}
+                                        oldValue={f.sourceValue}
+                                        newValue={f.targetValue} />
+                                </Row>
+                            </Box>
+                        )}
+                    
+                        {comparableData && comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets &&
+                            <Box spacing={Spacing.L}>
+                                <Row alignX={LayoutAlignment.Center}>
+                                    <Headline size={HeadlineSize.M}>Widgets</Headline>
+                                    <ReactDiffViewer
+                                        splitView={true}
+                                        oldValue={comparableData.sourcePageBuilderWidgets}
+                                        newValue={comparableData.targetPageBuilderWidgets} />
+                                </Row>
+                            </Box>
+                        }
+                    </Stack>
+                </Row>
+            }
+
         </Stack>
     );
 };
