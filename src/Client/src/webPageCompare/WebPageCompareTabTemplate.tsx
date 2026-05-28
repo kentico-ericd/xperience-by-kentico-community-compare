@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import ReactDiffViewer, { ReactDiffViewerStylesOverride } from 'react-diff-viewer';
+import ReactDiffViewer from 'react-diff-viewer';
 import {
     Box,
     Button,
@@ -23,11 +23,14 @@ const Commands = {
     Compare: "Compare",
 };
 
+//TODO: Show checkbox to toggle diffing
 //TODO: Render a message if the compare ran, but no differences were found
 //TODO: Handle exceptions gracefully, ie when the selected target doesn't exist
+//TODO: Pagebuilder widgets overflow horizontally
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
     const compareRequest: CompareRequest = {
         webPageID: props.webPageID,
+        websiteChannelName: props.websiteChannelName,
         contentTypeClassID: props.contentTypeClassID,
         sourceLanguageName: props.sourceLanguageName,
         sourceVersionStatus: props.sourceVersionStatus

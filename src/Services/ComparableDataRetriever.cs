@@ -6,22 +6,25 @@ using CMS.Helpers;
 using CMS.Websites;
 using CMS.Websites.Internal;
 
+using Kentico.Content.Web.Mvc;
+
 using XperienceCommunity.Compare.Models;
 
 namespace XperienceCommunity.Compare.Services;
 
 public class ComparableDataRetriever(
-    IContentQueryExecutor contentQueryExecutor,
+    IContentRetriever contentRetriever,
     IInfoProvider<WebPageItemInfo> webPageItemInfoProvider) : IComparableDataRetriever
 {
     public async Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest)
     {
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.SourceLanguageName);
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.TargetLanguageName);
+        ArgumentException.ThrowIfNullOrEmpty(compareRequest.WebsiteChannelName);
 
         string contentTypeName = DataClassInfoProvider.GetDataClassInfo(compareRequest.ContentTypeClassID)?.ClassName
             ?? throw new InvalidOperationException($"Failed to retrieve data class for ID {compareRequest.ContentTypeClassID}.");
-        var fieldNames = GetFieldNamesForCompare(contentTypeName);
+        var fieldsForCompare = GetFieldsForCompare(contentTypeName);
         int contentItemId = GetWebPageContentItemID(compareRequest.WebPageID);
         if (contentItemId == default)
         {
@@ -29,19 +32,29 @@ public class ComparableDataRetriever(
         }
 
         var targetPageData = await GetWebPageData(
-            contentTypeName,
             contentItemId,
+            compareRequest.WebsiteChannelName,
             compareRequest.TargetLanguageName,
             compareRequest.TargetVersionStatus,
-            fieldNames) ?? throw new InvalidOperationException("Failed to retrieve values for target page.");
+            fieldsForCompare) ?? throw new InvalidOperationException("Failed to retrieve values for target page.");
         var sourcePageData = await GetWebPageData(
-            contentTypeName,
             contentItemId,
+            compareRequest.WebsiteChannelName,
             compareRequest.SourceLanguageName,
             compareRequest.SourceVersionStatus,
-            fieldNames) ?? throw new InvalidOperationException("Failed to retrieve values for source page.");
+            fieldsForCompare) ?? throw new InvalidOperationException("Failed to retrieve values for source page.");
+
+        return BuildComparableWebPageData(sourcePageData, targetPageData, fieldsForCompare);
+    }
+
+
+    private static ComparableWebPageData BuildComparableWebPageData(
+        PageData sourcePageData,
+        PageData targetPageData,
+        IEnumerable<FormFieldInfo> fieldsForCompare)
+    {
         var fields = new List<Field>();
-        foreach (string field in fieldNames)
+        foreach (string field in fieldsForCompare.Select(f => f.Name))
         {
             bool sourceHasValue = sourcePageData.FieldValues.TryGetValue(field, out string? sourceValue);
             bool targetHasValue = targetPageData.FieldValues.TryGetValue(field, out string? targetValue);
@@ -75,42 +88,41 @@ public class ComparableDataRetriever(
 
 
     private async Task<PageData?> GetWebPageData(
-        string contentTypeName,
         int contentItemId,
+        string websiteChannelName,
         string languageName,
         VersionStatus versionStatus,
-        IEnumerable<string> fieldNames)
+        IEnumerable<FormFieldInfo> fields)
     {
         bool isPreview = versionStatus is VersionStatus.Draft or VersionStatus.InitialDraft;
-        var builder = new ContentItemQueryBuilder()
-            .ForContentType(contentTypeName, q => q.WithLinkedItems(1))
-            .InLanguage(languageName, false)
-            .Parameters(p => p.Where(w => w
-                .WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), contentItemId)));
-        var result = await contentQueryExecutor.GetResult(
-            builder,
-            container => PageDataBinder(container, fieldNames),
-            new()
+        var result = await contentRetriever.RetrieveAllPages<PageData>(
+            new RetrieveAllPagesParameters
             {
-                ForPreview = isPreview,
-                IncludeSecuredItems = true
-            });
+                ChannelName = websiteChannelName,
+                IsForPreview = isPreview,
+                LanguageName = languageName,
+                IncludeSecuredItems = true,
+                UseLanguageFallbacks = false
+            },
+            q => q.Where(w => w.WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), contentItemId)),
+            RetrievalCacheSettings.CacheDisabled, //TODO: Cache query
+            (container, mappedResult) => PageDataBinder(container, fields));
 
         return result.FirstOrDefault();
     }
 
 
-    private static PageData PageDataBinder(
+    private static async Task<PageData> PageDataBinder(
         IContentQueryDataContainer container,
-        IEnumerable<string> fieldNames)
+        IEnumerable<FormFieldInfo> fields)
     {
         // Build field values
         var fieldValues = new Dictionary<string, string>();
-        foreach (string field in fieldNames)
+        foreach (string field in fields.Select(f => f.Name))
         {
             //TODO: Format linked items in human-readable way
-            object rawValue = container.GetValue<object>(field);
-            string? stringRepresentation = ValidationHelper.GetString(rawValue, null);
+            object value = container.GetValue<object>(field);
+            string? stringRepresentation = ValidationHelper.GetString(value, null);
             if (!string.IsNullOrEmpty(stringRepresentation))
             {
                 fieldValues.Add(field, stringRepresentation);
@@ -125,12 +137,12 @@ public class ComparableDataRetriever(
     }
 
 
-    private static IEnumerable<string> GetFieldNamesForCompare(string contentTypeName)
+    private static List<FormFieldInfo> GetFieldsForCompare(string contentTypeName)
     {
         string prefixedContentTypeName = ReusableFieldSchemaUtils.GetPrefixedContentTypeName(contentTypeName);
         var formInfoWithSchema = FormHelper.GetFormInfo(prefixedContentTypeName, false);
 
-        return formInfoWithSchema.GetFields(true, false).Select(f => f.Name);
+        return formInfoWithSchema.GetFields(true, false);
     }
 
 

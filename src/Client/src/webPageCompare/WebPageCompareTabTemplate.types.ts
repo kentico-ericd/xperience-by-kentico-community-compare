@@ -2,6 +2,7 @@ import { IconName } from "@kentico/xperience-admin-components";
 
 export interface WebPageCompareTabProperties {
     readonly webPageID: number;
+    readonly websiteChannelName: string;
     readonly contentTypeClassID: number;
     readonly sourceLanguageName: string;
     readonly sourceVersionStatus: VersionStatus;
@@ -10,6 +11,7 @@ export interface WebPageCompareTabProperties {
 
 export interface CompareRequest {
     webPageID: number;
+    websiteChannelName: string;
     contentTypeClassID: number;
     sourceLanguageName: string;
     targetLanguageName?: string;

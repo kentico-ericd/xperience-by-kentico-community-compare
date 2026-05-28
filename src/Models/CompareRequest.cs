@@ -7,6 +7,9 @@ public class CompareRequest
     public int WebPageID { get; set; }
 
 
+    public string? WebsiteChannelName { get; set; }
+
+
     public int ContentTypeClassID { get; set; }
 
 

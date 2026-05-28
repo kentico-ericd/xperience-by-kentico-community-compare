@@ -1,7 +1,5 @@
 ﻿using CMS.ContentEngine;
 using CMS.ContentEngine.Internal;
-using CMS.ContentWorkflowEngine;
-using CMS.ContentWorkflowEngine.Internal;
 using CMS.DataEngine;
 using CMS.Helpers;
 using CMS.Websites;
@@ -32,6 +30,8 @@ namespace XperienceCommunity.Compare.UIPages;
 public class WebPageCompareTab(
     IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
     IComparableDataRetriever comparableDataRetriever,
+    IInfoProvider<ChannelInfo> channelInfoProvider,
+    IInfoProvider<WebsiteChannelInfo> websiteChannelInfoProvider,
     IAuthenticatedUserAccessor authenticatedUserAccessor,
     IWebPageManagerFactory webPageManagerFactory,
     IPageLinkGenerator pageLinkGenerator) : WebPageBase<WebPageCompareTabProperties>(
@@ -58,11 +58,7 @@ public class WebPageCompareTab(
             RedirectTo(typeof(CreateLanguageVariant), properties);
         }
 
-        await SetProperties(
-            properties,
-            WebPageIdentifier.WebPageItemID,
-            WebPageIdentifier.LanguageName,
-            ApplicationIdentifier.WebsiteChannelID);
+        await SetProperties(properties);
 
         return properties;
     }
@@ -84,23 +80,33 @@ public class WebPageCompareTab(
     }
 
 
-    public async Task SetProperties(WebPageCompareTabProperties properties, int webPageId, string languageName, int websiteChannelId)
+    private async Task SetProperties(WebPageCompareTabProperties properties)
     {
         properties.PreventRefetch = true;
-        properties.WebPageID = webPageId;
-        properties.SourceLanguageName = languageName;
+        properties.WebPageID = WebPageIdentifier.WebPageItemID;
+        properties.SourceLanguageName = WebPageIdentifier.LanguageName;
+
+        // Get website channel
+        int channelId = (await websiteChannelInfoProvider.GetAsync(ApplicationIdentifier.WebsiteChannelID))?.WebsiteChannelChannelID
+            ?? throw new InvalidOperationException($"Website channel '({ApplicationIdentifier.WebsiteChannelID})' not found.");
+        properties.WebsiteChannelName = (await channelInfoProvider.GetAsync(channelId))?.ChannelName
+            ?? throw new InvalidOperationException($"Channel '({channelId})' not found.");
 
         // Get languages
         var languages = await contentLanguageInfoProvider.Get().GetEnumerableTypedResultAsync();
-        var webPageLanguage = languages.FirstOrDefault(l => l.ContentLanguageName.Equals(languageName, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException($"Language '({languageName})' not found.");
+        var webPageLanguage = languages.FirstOrDefault(l =>
+            l.ContentLanguageName.Equals(WebPageIdentifier.LanguageName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"Language '({WebPageIdentifier.LanguageName})' not found.");
         properties.Languages = languages.Select(l =>
             new ContentLanguage(l.ContentLanguageName, l.ContentLanguageDisplayName, l.ContentLanguageFlagIconName));
 
         // Get basic web page data
-        var query = GetWebPageDataQuery(webPageId, websiteChannelId, webPageLanguage.ContentLanguageID);
-        var dataContainer = (await query.GetDataContainerResultAsync()).FirstOrDefault()
-            ?? throw new InvalidOperationException($"Failed to retrieve metadata info for web page {webPageId}.");
+        var query = GetWebPageDataQuery(
+            WebPageIdentifier.WebPageItemID,
+            ApplicationIdentifier.WebsiteChannelID,
+            webPageLanguage.ContentLanguageID);
+        var dataContainer = (await query.GetDataContainerResultAsync()).FirstOrDefault() ??
+            throw new InvalidOperationException($"Failed to retrieve metadata info for web page {ApplicationIdentifier.WebsiteChannelID}.");
         properties.SourceVersionStatus = ValidationHelper.GetInteger(
             dataContainer.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataLatestVersionStatus)),
             0);
@@ -137,9 +143,9 @@ internal class WebPageLayoutExtender : PageExtender<WebPageLayout>
     {
         await base.ConfigureTemplateProperties(properties);
 
-        var myTab = properties.Navigation.Items
+        var compareTab = properties.Navigation.Items
             .FirstOrDefault(i => i.Path.Equals(WebPageCompareTab.SLUG, StringComparison.OrdinalIgnoreCase));
-        if (myTab is null)
+        if (compareTab is null)
         {
             return properties;
         }
@@ -148,7 +154,7 @@ internal class WebPageLayoutExtender : PageExtender<WebPageLayout>
             .FirstOrDefault(i => i.Path.Equals("content", StringComparison.OrdinalIgnoreCase));
         if (contentTab is null || (contentTab is not null && contentTab.Disabled))
         {
-            myTab.Disabled = true;
+            compareTab.Disabled = true;
         }
 
         return properties;
