@@ -23,10 +23,10 @@ const Commands = {
     Compare: "Compare",
 };
 
-//TODO: Show checkbox to toggle diffing
 //TODO: Render a message if the compare ran, but no differences were found
 //TODO: Handle exceptions gracefully, ie when the selected target doesn't exist
 //TODO: Pagebuilder widgets overflow horizontally
+//TODO: If the current page is draft, we need to swap left/right sides. Draft is considered "new" text compared to published version
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
     const compareRequest: CompareRequest = {
         webPageID: props.webPageID,
@@ -152,6 +152,12 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 </Column>
             </Row>
 
+            {comparableData && !shouldRenderDiffs() &&
+                // Compare ran, but no differences were found
+                <Row alignX={LayoutAlignment.Center}>
+                    <Headline size={HeadlineSize.L}>No differences found!</Headline>
+                </Row>
+            }
             {shouldRenderDiffs() &&
                 <Row>
                     <Stack>
@@ -161,6 +167,8 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                     <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
                                     <ReactDiffViewer
                                         splitView={true}
+                                        hideLineNumbers={true}
+                                        extraLinesSurroundingDiff={0}
                                         oldValue={f.sourceValue}
                                         newValue={f.targetValue} />
                                 </Row>
@@ -173,6 +181,8 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                     <Headline size={HeadlineSize.M}>Widgets</Headline>
                                     <ReactDiffViewer
                                         splitView={true}
+                                        hideLineNumbers={true}
+                                        extraLinesSurroundingDiff={0}
                                         oldValue={comparableData.sourcePageBuilderWidgets}
                                         newValue={comparableData.targetPageBuilderWidgets} />
                                 </Row>

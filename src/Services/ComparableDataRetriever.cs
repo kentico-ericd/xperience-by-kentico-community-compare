@@ -24,13 +24,14 @@ public class ComparableDataRetriever(
 
         string contentTypeName = DataClassInfoProvider.GetDataClassInfo(compareRequest.ContentTypeClassID)?.ClassName
             ?? throw new InvalidOperationException($"Failed to retrieve data class for ID {compareRequest.ContentTypeClassID}.");
-        var fieldsForCompare = GetFieldsForCompare(contentTypeName);
         int contentItemId = GetWebPageContentItemID(compareRequest.WebPageID);
         if (contentItemId == default)
         {
             throw new InvalidOperationException($"Failed to retrieve content item ID for web page {compareRequest.WebPageID}.");
         }
+        var fieldsForCompare = GetFieldsForCompare(contentTypeName);
 
+        // For performance reasons, get target page first because it might not exist and we can avoid querying the source page
         var targetPageData = await GetWebPageData(
             contentItemId,
             compareRequest.WebsiteChannelName,
@@ -105,7 +106,7 @@ public class ComparableDataRetriever(
                 UseLanguageFallbacks = false
             },
             q => q.Where(w => w.WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), contentItemId)),
-            RetrievalCacheSettings.CacheDisabled, //TODO: Cache query
+            RetrievalCacheSettings.CacheDisabled,
             (container, mappedResult) => PageDataBinder(container, fields));
 
         return result.FirstOrDefault();
@@ -120,7 +121,6 @@ public class ComparableDataRetriever(
         var fieldValues = new Dictionary<string, string>();
         foreach (string field in fields.Select(f => f.Name))
         {
-            //TODO: Format linked items in human-readable way
             object value = container.GetValue<object>(field);
             string? stringRepresentation = ValidationHelper.GetString(value, null);
             if (!string.IsNullOrEmpty(stringRepresentation))
