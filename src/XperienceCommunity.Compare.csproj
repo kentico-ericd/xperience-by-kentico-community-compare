@@ -29,8 +29,4 @@
   <ItemGroup>
     <AssemblyAttribute Include="CMS.AssemblyDiscoverableAttribute"></AssemblyAttribute>
   </ItemGroup>
-	
-  <ItemGroup>
-    <Folder Include="Client\src\components\" />
-  </ItemGroup>
 </Project>

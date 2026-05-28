@@ -1,10 +1,10 @@
 import React, { useRef, useState } from "react";
-import ReactDiffViewer from 'react-diff-viewer';
 import {
     Box,
     Button,
     ButtonColor,
     ButtonSize,
+    Checkbox,
     Cols,
     Column,
     Headline,
@@ -18,6 +18,7 @@ import {
 } from "@kentico/xperience-admin-components";
 import { usePageCommand } from "@kentico/xperience-admin-base";
 import { CompareRequest, ComparableWebPageData, WebPageCompareTabProperties, VersionStatus } from "./WebPageCompareTabTemplate.types";
+import ReactDiffViewer, { ReactDiffViewerStylesOverride } from "react-diff-viewer";
 
 const Commands = {
     Compare: "Compare",
@@ -30,9 +31,7 @@ enum RenderState {
     Differences
 };
 
-//TODO: Enforce selection in dropdowns
-//TODO: Pagebuilder widgets overflow horizontally
-//TODO: If the current page is draft, we need to swap left/right sides. Draft is considered "new" text compared to published version
+//TODO: Pagebuilder widgets overflow horizontally on 1080p
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
     const compareRequest: CompareRequest = {
         webPageID: props.webPageID,
@@ -45,9 +44,17 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
     const compareButtonRef = useRef<HTMLButtonElement>(null);
     const [comparableData, setComparableData] = useState<ComparableWebPageData>();
     const [targetLanguageName, setTargetLanguageName] = useState(props.sourceLanguageName);
-    const [targetVersionStatus, setTargetVersionStatus] = useState(0);
+    const [targetVersionStatus, setTargetVersionStatus] = useState<number | undefined>();
+    const [enableDiffs, setDiffsEnabled] = useState(false);
     const { execute: compare } = usePageCommand<ComparableWebPageData, CompareRequest>(Commands.Compare, {
         before: () => {
+            // Validate selections, cancel if invalid
+            if (!targetLanguageName || !targetVersionStatus) {
+                setComparableData({ errorMessage: 'Target page selection incomplete.', fields: [] })
+
+                return false;
+            }
+
             if (compareButtonRef.current) {
                 compareButtonRef.current.disabled = true;
                 compareButtonOriginalContent = compareButtonRef.current.innerHTML;
@@ -66,6 +73,18 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         },
         data: compareRequest
     });
+
+    const diffViewerStyles: ReactDiffViewerStylesOverride = {
+        line: {
+            fontSize: '12px'
+        },
+        variables: {
+            light: {
+                addedBackground: '#fafbfc',
+                removedBackground: '#fafbfc',
+            }
+        },
+    };
 
     const getSourcePageLanguageDisplayName = () => props.languages
         .find(l => l.languageName === props.sourceLanguageName)?.languageDisplayName ?? '(Current language)';
@@ -110,7 +129,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         <Stack align={LayoutAlignment.Center}>
             <Headline size={HeadlineSize.M}>Something went wrong</Headline>
             <Headline size={HeadlineSize.S}>Error "{comparableData?.errorMessage}" occurred.
-                Please check the Event Log for more details.</Headline>
+                The Event Log may contain more details.</Headline>
         </Stack>
     </Row>
 
@@ -123,7 +142,9 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                         <ReactDiffViewer
                             splitView={true}
                             hideLineNumbers={true}
+                            disableWordDiff={!enableDiffs}
                             extraLinesSurroundingDiff={0}
+                            styles={diffViewerStyles}
                             oldValue={f.sourceValue}
                             newValue={f.targetValue} />
                     </Row>
@@ -137,7 +158,9 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                         <ReactDiffViewer
                             splitView={true}
                             hideLineNumbers={true}
+                            disableWordDiff={!enableDiffs}
                             extraLinesSurroundingDiff={0}
+                            styles={diffViewerStyles}
                             oldValue={comparableData.sourcePageBuilderWidgets}
                             newValue={comparableData.targetPageBuilderWidgets} />
                     </Row>
@@ -164,16 +187,23 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 </Column>
 
                 <Column cols={Cols.Col4}>
-                    <Row alignX={LayoutAlignment.Center}>
-                        <Box spacingY={Spacing.XXXL}>
-                            <Button
-                                buttonRef={compareButtonRef}
-                                label='Compare'
-                                color={ButtonColor.Primary}
-                                size={ButtonSize.M}
-                                onClick={() => compare()} icon='xp-doc-copy' />
-                        </Box>
-                    </Row>
+                    <Box spacing={Spacing.L}>
+                        <Row alignX={LayoutAlignment.Center}>
+                            <Stack spacing={Spacing.M} align={LayoutAlignment.Center}>
+                                <Button
+                                    buttonRef={compareButtonRef}
+                                    label='Compare'
+                                    color={ButtonColor.Primary}
+                                    size={ButtonSize.M}
+                                    onClick={() => compare()} icon='xp-doc-copy' />
+                                <Checkbox
+                                    label='Show diffs'
+                                    checked={enableDiffs}
+                                    onChange={(_, checked) => setDiffsEnabled(checked)} />
+                            </Stack>
+                        
+                        </Row>
+                    </Box>
                 </Column>
 
                 <Column cols={Cols.Col4}>
