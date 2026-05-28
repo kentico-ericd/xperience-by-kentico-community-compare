@@ -23,8 +23,14 @@ const Commands = {
     Compare: "Compare",
 };
 
-//TODO: Render a message if the compare ran, but no differences were found
-//TODO: Handle exceptions gracefully, ie when the selected target doesn't exist
+enum RenderState {
+    NotRun,
+    Error,
+    NoDifferences,
+    Differences
+};
+
+//TODO: Enforce selection in dropdowns
 //TODO: Pagebuilder widgets overflow horizontally
 //TODO: If the current page is draft, we need to swap left/right sides. Draft is considered "new" text compared to published version
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
@@ -74,14 +80,71 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         return '(Current version)';
     };
 
-    /**
-     * Returns true if the comparison has been executed and at least one difference was found.
-     */
-    const shouldRenderDiffs = () => !!(
-        comparableData &&
-        (comparableData.fields.length > 0 ||
-            (comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets))
-    );
+    const getRenderState = (): RenderState => {
+        if (!comparableData) {
+            return RenderState.NotRun;
+        }
+
+        if (comparableData.errorMessage) {
+            return RenderState.Error;
+        }
+
+        if ((comparableData.fields.length > 0 ||
+            (comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets)))
+        {
+            return RenderState.Differences;
+        }
+
+        return RenderState.NoDifferences;
+    };
+
+    const renderNotRun = () => <Row alignX={LayoutAlignment.Center}>
+        <Headline size={HeadlineSize.M}>Choose a page and click Compare to start!</Headline>
+    </Row>
+
+    const renderNoDifferences = () => <Row alignX={LayoutAlignment.Center}>
+        <Headline size={HeadlineSize.M}>No differences found</Headline>
+    </Row>
+
+    const renderError = () => <Row alignX={LayoutAlignment.Center}>
+        <Stack align={LayoutAlignment.Center}>
+            <Headline size={HeadlineSize.M}>Something went wrong</Headline>
+            <Headline size={HeadlineSize.S}>Error "{comparableData?.errorMessage}" occurred.
+                Please check the Event Log for more details.</Headline>
+        </Stack>
+    </Row>
+
+    const renderDifferences = () => <Row>
+        <Stack>
+            {comparableData && comparableData.fields.length > 0 && comparableData.fields.map(f =>
+                <Box spacing={Spacing.L}>
+                    <Row alignX={LayoutAlignment.Center}>
+                        <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
+                        <ReactDiffViewer
+                            splitView={true}
+                            hideLineNumbers={true}
+                            extraLinesSurroundingDiff={0}
+                            oldValue={f.sourceValue}
+                            newValue={f.targetValue} />
+                    </Row>
+                </Box>
+            )}
+
+            {comparableData && comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets &&
+                <Box spacing={Spacing.L}>
+                    <Row alignX={LayoutAlignment.Center}>
+                        <Headline size={HeadlineSize.M}>Widgets</Headline>
+                        <ReactDiffViewer
+                            splitView={true}
+                            hideLineNumbers={true}
+                            extraLinesSurroundingDiff={0}
+                            oldValue={comparableData.sourcePageBuilderWidgets}
+                            newValue={comparableData.targetPageBuilderWidgets} />
+                    </Row>
+                </Box>
+            }
+        </Stack>
+    </Row>
 
     return (
         <Stack>
@@ -152,45 +215,17 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 </Column>
             </Row>
 
-            {comparableData && !shouldRenderDiffs() &&
-                // Compare ran, but no differences were found
-                <Row alignX={LayoutAlignment.Center}>
-                    <Headline size={HeadlineSize.L}>No differences found!</Headline>
-                </Row>
-            }
-            {shouldRenderDiffs() &&
-                <Row>
-                    <Stack>
-                        {comparableData && comparableData.fields.length > 0 && comparableData.fields.map(f =>
-                            <Box spacing={Spacing.L}>
-                                <Row alignX={LayoutAlignment.Center}>
-                                    <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
-                                    <ReactDiffViewer
-                                        splitView={true}
-                                        hideLineNumbers={true}
-                                        extraLinesSurroundingDiff={0}
-                                        oldValue={f.sourceValue}
-                                        newValue={f.targetValue} />
-                                </Row>
-                            </Box>
-                        )}
-                    
-                        {comparableData && comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets &&
-                            <Box spacing={Spacing.L}>
-                                <Row alignX={LayoutAlignment.Center}>
-                                    <Headline size={HeadlineSize.M}>Widgets</Headline>
-                                    <ReactDiffViewer
-                                        splitView={true}
-                                        hideLineNumbers={true}
-                                        extraLinesSurroundingDiff={0}
-                                        oldValue={comparableData.sourcePageBuilderWidgets}
-                                        newValue={comparableData.targetPageBuilderWidgets} />
-                                </Row>
-                            </Box>
-                        }
-                    </Stack>
-                </Row>
-            }
+            {(() => {
+                const state = getRenderState();
+                switch (state) {
+                    case RenderState.Error: return renderError();
+                    case RenderState.NoDifferences: return renderNoDifferences();
+                    case RenderState.Differences: return renderDifferences();
+                    case RenderState.NotRun:
+                    default:
+                        return renderNotRun();
+                }
+            })()}
 
         </Stack>
     );

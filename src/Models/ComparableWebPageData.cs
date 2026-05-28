@@ -2,6 +2,9 @@
 
 public class ComparableWebPageData
 {
+    public string? ErrorMessage { get; set; }
+
+
     public string? SourcePageBuilderWidgets { get; set; }
 
 

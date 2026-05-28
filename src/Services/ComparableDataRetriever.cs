@@ -96,7 +96,7 @@ public class ComparableDataRetriever(
         IEnumerable<FormFieldInfo> fields)
     {
         bool isPreview = versionStatus is VersionStatus.Draft or VersionStatus.InitialDraft;
-        var result = await contentRetriever.RetrieveAllPages<PageData>(
+        var result = await contentRetriever.RetrieveAllPages<PageData?>(
             new RetrieveAllPagesParameters
             {
                 ChannelName = websiteChannelName,
@@ -113,7 +113,7 @@ public class ComparableDataRetriever(
     }
 
 
-    private static async Task<PageData> PageDataBinder(
+    private static async Task<PageData?> PageDataBinder(
         IContentQueryDataContainer container,
         IEnumerable<FormFieldInfo> fields)
     {

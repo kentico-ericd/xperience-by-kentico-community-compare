@@ -20,6 +20,7 @@ export interface CompareRequest {
 }
 
 export interface ComparableWebPageData {
+    readonly errorMessage?: string;
     readonly fields: Field[];
     readonly sourcePageBuilderWidgets?: string;
     readonly targetPageBuilderWidgets?: string;

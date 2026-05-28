@@ -1,5 +1,6 @@
 ﻿using CMS.ContentEngine;
 using CMS.ContentEngine.Internal;
+using CMS.Core;
 using CMS.DataEngine;
 using CMS.Helpers;
 using CMS.Websites;
@@ -28,6 +29,7 @@ namespace XperienceCommunity.Compare.UIPages;
 /// Template for the web page "Compare" tab.
 /// </summary>
 public class WebPageCompareTab(
+    IEventLogService eventLogService,
     IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
     IComparableDataRetriever comparableDataRetriever,
     IInfoProvider<ChannelInfo> channelInfoProvider,
@@ -65,8 +67,21 @@ public class WebPageCompareTab(
 
 
     [PageCommand]
-    public async Task<ICommandResponse<ComparableWebPageData>> Compare(CompareRequest request) =>
-        ResponseFrom(await comparableDataRetriever.GetWebPageCompareResult(request));
+    public async Task<ICommandResponse<ComparableWebPageData>> Compare(CompareRequest request)
+    {
+        try
+        {
+            var result = await comparableDataRetriever.GetWebPageCompareResult(request);
+
+            return ResponseFrom(result);
+        }
+        catch (Exception ex)
+        {
+            eventLogService.LogException(nameof(WebPageCompareTab), nameof(Compare), ex);
+
+            return ResponseFrom(new ComparableWebPageData { ErrorMessage = ex.Message });
+        }
+    }
 
 
     private void RedirectTo(Type targetPage, WebPageCompareTabProperties properties)
