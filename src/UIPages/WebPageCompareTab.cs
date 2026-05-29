@@ -1,4 +1,5 @@
-﻿using CMS.ContentEngine;
+﻿using CMS.Base;
+using CMS.ContentEngine;
 using CMS.ContentEngine.Internal;
 using CMS.Core;
 using CMS.DataEngine;
@@ -30,6 +31,7 @@ namespace XperienceCommunity.Compare.UIPages;
 /// </summary>
 public class WebPageCompareTab(
     IEventLogService eventLogService,
+    IProgressiveCache progressiveCache,
     IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
     IComparableDataRetriever comparableDataRetriever,
     IInfoProvider<ChannelInfo> channelInfoProvider,
@@ -116,11 +118,10 @@ public class WebPageCompareTab(
             new ContentLanguage(l.ContentLanguageName, l.ContentLanguageDisplayName, l.ContentLanguageFlagIconName));
 
         // Get basic web page data
-        var query = GetWebPageDataQuery(
+        var dataContainer = await GetWebPageData(
             WebPageIdentifier.WebPageItemID,
             ApplicationIdentifier.WebsiteChannelID,
-            webPageLanguage.ContentLanguageID);
-        var dataContainer = (await query.GetDataContainerResultAsync()).FirstOrDefault() ??
+            webPageLanguage.ContentLanguageID) ??
             throw new InvalidOperationException($"Failed to retrieve metadata info for web page {ApplicationIdentifier.WebsiteChannelID}.");
         properties.SourceVersionStatus = ValidationHelper.GetInteger(
             dataContainer.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataLatestVersionStatus)),
@@ -131,9 +132,9 @@ public class WebPageCompareTab(
     }
 
 
-    //TODO: Limit columns of query
-    private static DataQuery GetWebPageDataQuery(int webPageId, int websiteChannelId, int languageId) =>
-        new DataQuery()
+    private Task<IDataContainer?> GetWebPageData(int webPageId, int websiteChannelId, int languageId)
+    {
+        var query = new DataQuery()
             .From(new QuerySource(new QuerySourceTable(ContentItemLanguageMetadataInfo.TYPEINFO.ClassStructureInfo.TableName)))
             .Source(source => source
                 .LeftJoin<ContentItemInfo>(
@@ -145,7 +146,15 @@ public class WebPageCompareTab(
             )
             .WhereEquals(nameof(WebPageItemInfo.WebPageItemID), webPageId)
             .WhereEquals(nameof(WebPageItemInfo.WebPageItemWebsiteChannelID), websiteChannelId)
-            .WhereEquals(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentLanguageID), languageId);
+            .WhereEquals(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentLanguageID), languageId)
+            .Columns(
+                nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataLatestVersionStatus),
+                nameof(ContentItemInfo.ContentItemContentTypeID));
+
+        return progressiveCache.LoadAsync(
+            async (cs) => (await query.GetDataContainerResultAsync()).FirstOrDefault(),
+            new CacheSettings(cacheMinutes: 10));
+    }
 }
 
 
@@ -167,7 +176,7 @@ internal class WebPageLayoutExtender : PageExtender<WebPageLayout>
 
         var contentTab = properties.Navigation.Items
             .FirstOrDefault(i => i.Path.Equals("content", StringComparison.OrdinalIgnoreCase));
-        if (contentTab is null || (contentTab is not null && contentTab.Disabled))
+        if (contentTab is null || contentTab.Disabled)
         {
             compareTab.Disabled = true;
         }

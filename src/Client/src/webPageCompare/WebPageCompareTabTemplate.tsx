@@ -31,7 +31,6 @@ enum RenderState {
     Differences
 };
 
-//TODO: Pagebuilder widgets overflow horizontally on 1080p
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
     const compareRequest: CompareRequest = {
         webPageID: props.webPageID,
@@ -78,6 +77,10 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         line: {
             fontSize: '12px'
         },
+        diffContainer: {
+            tableLayout: 'fixed',
+            wordWrap: 'break-word'
+        },
         variables: {
             light: {
                 addedBackground: '#fafbfc',
@@ -118,7 +121,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
     };
 
     const renderNotRun = () => <Row alignX={LayoutAlignment.Center}>
-        <Headline size={HeadlineSize.M}>Choose a page and click Compare to start!</Headline>
+        {/* Currently there is no message displayed when tool is not run */}
     </Row>
 
     const renderNoDifferences = () => <Row alignX={LayoutAlignment.Center}>
@@ -133,9 +136,9 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         </Stack>
     </Row>
 
-    const renderDifferences = () => <Row>
-        <Stack>
-            {comparableData && comparableData.fields.length > 0 && comparableData.fields.map(f =>
+    const renderDifferences = () => <>
+        {comparableData && comparableData.fields.length > 0 && comparableData.fields.map(f =>
+            <Column cols={Cols.Col12}>
                 <Box spacing={Spacing.L}>
                     <Row alignX={LayoutAlignment.Center}>
                         <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
@@ -149,9 +152,10 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                             newValue={f.targetValue} />
                     </Row>
                 </Box>
-            )}
-
-            {comparableData && comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets &&
+            </Column>
+        )}
+        {comparableData && comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets &&
+            <Column cols={Cols.Col12}>
                 <Box spacing={Spacing.L}>
                     <Row alignX={LayoutAlignment.Center}>
                         <Headline size={HeadlineSize.M}>Widgets</Headline>
@@ -165,12 +169,13 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                             newValue={comparableData.targetPageBuilderWidgets} />
                     </Row>
                 </Box>
-            }
-        </Stack>
-    </Row>
+            </Column>
+        }
+    </>
+
 
     return (
-        <Stack>
+        <Stack spacing={Spacing.L}>
             <Row>
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
