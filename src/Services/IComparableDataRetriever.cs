@@ -4,5 +4,5 @@ namespace XperienceCommunity.Compare.Services;
 
 public interface IComparableDataRetriever
 {
-    public Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest);
+    public Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest, CancellationToken ct);
 }

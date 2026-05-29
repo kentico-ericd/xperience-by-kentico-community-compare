@@ -69,11 +69,11 @@ public class WebPageCompareTab(
 
 
     [PageCommand]
-    public async Task<ICommandResponse<ComparableWebPageData>> Compare(CompareRequest request)
+    public async Task<ICommandResponse<ComparableWebPageData>> Compare(CompareRequest request, CancellationToken ct)
     {
         try
         {
-            var result = await comparableDataRetriever.GetWebPageCompareResult(request);
+            var result = await comparableDataRetriever.GetWebPageCompareResult(request, ct);
 
             return ResponseFrom(result);
         }

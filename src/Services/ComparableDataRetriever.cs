@@ -16,7 +16,7 @@ public class ComparableDataRetriever(
     IContentRetriever contentRetriever,
     IInfoProvider<WebPageItemInfo> webPageItemInfoProvider) : IComparableDataRetriever
 {
-    public async Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest)
+    public async Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.SourceLanguageName);
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.TargetLanguageName);
@@ -37,13 +37,15 @@ public class ComparableDataRetriever(
             compareRequest.WebsiteChannelName,
             compareRequest.TargetLanguageName,
             compareRequest.TargetVersionStatus,
-            fieldsForCompare) ?? throw new InvalidOperationException("Failed to retrieve values for target page.");
+            fieldsForCompare,
+            ct) ?? throw new InvalidOperationException("Failed to retrieve values for target page.");
         var sourcePageData = await GetWebPageData(
             contentItemId,
             compareRequest.WebsiteChannelName,
             compareRequest.SourceLanguageName,
             compareRequest.SourceVersionStatus,
-            fieldsForCompare) ?? throw new InvalidOperationException("Failed to retrieve values for source page.");
+            fieldsForCompare,
+            ct) ?? throw new InvalidOperationException("Failed to retrieve values for source page.");
 
         return BuildComparableWebPageData(sourcePageData, targetPageData, fieldsForCompare);
     }
@@ -93,7 +95,8 @@ public class ComparableDataRetriever(
         string websiteChannelName,
         string languageName,
         VersionStatus versionStatus,
-        IEnumerable<FormFieldInfo> fields)
+        IEnumerable<FormFieldInfo> fields,
+        CancellationToken ct)
     {
         bool isPreview = versionStatus is VersionStatus.Draft or VersionStatus.InitialDraft;
         var result = await contentRetriever.RetrieveAllPages<PageData?>(
@@ -107,7 +110,8 @@ public class ComparableDataRetriever(
             },
             q => q.Where(w => w.WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), contentItemId)),
             RetrievalCacheSettings.CacheDisabled,
-            (container, mappedResult) => PageDataBinder(container, fields));
+            (container, mappedResult) => PageDataBinder(container, fields),
+            ct);
 
         return result.FirstOrDefault();
     }
