@@ -44,6 +44,12 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Build Client Scripts
+        working-directory: "./src/Client"
+        run: |
+          npm i
+          npm run build
+
       - name: Install dependencies
         run: |
           dotnet restore `
@@ -61,3 +67,9 @@ jobs:
             --configuration Release `
             --no-build `
             --no-restore
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NuGet
+          path: ./**/*.nupkg
