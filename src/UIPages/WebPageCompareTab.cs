@@ -32,10 +32,10 @@ namespace XperienceCommunity.Compare.UIPages;
 public class WebPageCompareTab(
     IEventLogService eventLogService,
     IProgressiveCache progressiveCache,
-    IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
     IComparableDataRetriever comparableDataRetriever,
     IInfoProvider<ChannelInfo> channelInfoProvider,
     IInfoProvider<WebsiteChannelInfo> websiteChannelInfoProvider,
+    IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
     IAuthenticatedUserAccessor authenticatedUserAccessor,
     IWebPageManagerFactory webPageManagerFactory,
     IPageLinkGenerator pageLinkGenerator) : WebPageBase<WebPageCompareTabProperties>(
@@ -44,6 +44,7 @@ public class WebPageCompareTab(
             pageLinkGenerator)
 {
     public const string SLUG = "compare";
+    private readonly IPageLinkGenerator pageLinkGenerator = pageLinkGenerator;
 
 
     public override async Task<WebPageCompareTabProperties> ConfigureTemplateProperties(WebPageCompareTabProperties properties)
@@ -68,6 +69,10 @@ public class WebPageCompareTab(
     }
 
 
+    /// <summary>
+    /// Submits a request to compare two versions of a web page and returns the result. If an exception occurs, an empty result is
+    /// constructed passing the error message within <see cref="ComparableWebPageData.ErrorMessage"/>.
+    /// </summary>
     [PageCommand]
     public async Task<ICommandResponse<ComparableWebPageData>> Compare(CompareRequest request, CancellationToken ct)
     {
@@ -97,6 +102,9 @@ public class WebPageCompareTab(
     }
 
 
+    /// <summary>
+    /// Initializes and sets various properties for a web page comparison tab, including identifiers, language, and channel.
+    /// </summary>
     private async Task SetProperties(WebPageCompareTabProperties properties)
     {
         properties.PreventRefetch = true;
@@ -132,6 +140,10 @@ public class WebPageCompareTab(
     }
 
 
+    /// <summary>
+    /// Gets the necessary data for the web page to be compared, such as the content type and version status.
+    /// This data is used to determine which fields are comparable and to validate the compare request before processing.
+    /// </summary>
     private Task<IDataContainer?> GetWebPageData(int webPageId, int websiteChannelId, int languageId)
     {
         var query = new DataQuery()
@@ -153,7 +165,9 @@ public class WebPageCompareTab(
 
         return progressiveCache.LoadAsync(
             async (cs) => (await query.GetDataContainerResultAsync()).FirstOrDefault(),
-            new CacheSettings(cacheMinutes: 10));
+            new CacheSettings(
+                60,
+                $"{nameof(WebPageCompareTab)}|{nameof(GetWebPageData)}|{webPageId}|{websiteChannelId}|{languageId}"));
     }
 }
 

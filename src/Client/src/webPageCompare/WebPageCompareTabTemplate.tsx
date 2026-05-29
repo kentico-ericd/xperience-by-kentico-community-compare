@@ -21,16 +21,24 @@ import { CompareRequest, ComparableWebPageData, WebPageCompareTabProperties, Ver
 import ReactDiffViewer, { ReactDiffViewerStylesOverride } from "react-diff-viewer";
 
 const Commands = {
+    /** Command to compare the selected web pages. */
     Compare: "Compare",
 };
 
 enum RenderState {
+    /** The comparison has not been run yet. */
     NotRun,
+    /** An error occurred during the comparison. */
     Error,
+    /** No differences were found between the source and target pages. */
     NoDifferences,
+    /** Differences were found between the source and target pages. */
     Differences
 };
 
+/**
+ * The front-end template for the web page Compare tab.
+ */
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
     const compareRequest: CompareRequest = {
         webPageID: props.webPageID,
@@ -102,6 +110,9 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         return '(Current version)';
     };
 
+    /**
+     * Determines what to render based on the current state of comparableData.
+     */
     const getRenderState = (): RenderState => {
         if (!comparableData) {
             return RenderState.NotRun;
@@ -124,10 +135,16 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         {/* Currently there is no message displayed when tool is not run */}
     </Row>
 
+    /**
+     * Renders a friendly message when no differences are found between the source and target pages.
+     */
     const renderNoDifferences = () => <Row alignX={LayoutAlignment.Center}>
         <Headline size={HeadlineSize.M}>No differences found</Headline>
     </Row>
 
+    /**
+     * Renders an error message when an exception occurs during comparison.
+     */
     const renderError = () => <Row alignX={LayoutAlignment.Center}>
         <Stack align={LayoutAlignment.Center}>
             <Headline size={HeadlineSize.M}>Something went wrong</Headline>
@@ -136,6 +153,10 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         </Stack>
     </Row>
 
+    /**
+     * Renders the differences between the source and target pages. This includes field differences as well as page builder widget
+     * differences (if available).
+     */
     const renderDifferences = () => <>
         {comparableData && comparableData.fields.length > 0 && comparableData.fields.map(f =>
             <Column cols={Cols.Col12}>
