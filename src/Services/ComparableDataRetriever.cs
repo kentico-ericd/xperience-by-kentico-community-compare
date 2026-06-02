@@ -7,6 +7,8 @@ using CMS.Websites;
 
 using Kentico.Content.Web.Mvc;
 
+using Newtonsoft.Json;
+
 using XperienceCommunity.Compare.Models;
 
 namespace XperienceCommunity.Compare.Services;
@@ -14,17 +16,16 @@ namespace XperienceCommunity.Compare.Services;
 /// <summary>
 /// Default implementation of <see cref="IComparableDataRetriever"/>.
 /// </summary>
-public class ComparableDataRetriever(IContentRetriever contentRetriever) : IComparableDataRetriever
+public class ComparableDataRetriever(
+    IContentRetriever contentRetriever,
+    IInfoProvider<ContentItemInfo> contentItemInfoProvider,
+    IInfoProvider<ContentItemLanguageMetadataInfo> contentItemLanguageMetadataInfoProvider) : IComparableDataRetriever
 {
     public async Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest, CancellationToken ct)
     {
-        ArgumentException.ThrowIfNullOrEmpty(compareRequest.SourceLanguageName);
-        ArgumentException.ThrowIfNullOrEmpty(compareRequest.TargetLanguageName);
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.WebsiteChannelName);
 
         var fieldsForCompare = GetFieldsForCompare(compareRequest.ContentTypeClassID);
-
-        // For performance reasons, get target page first because it might not exist and we can avoid querying the source page
         var targetPageData = await GetWebPageData(
             false,
             compareRequest,
@@ -99,14 +100,14 @@ public class ComparableDataRetriever(IContentRetriever contentRetriever) : IComp
         IEnumerable<FormFieldInfo> fields,
         CancellationToken ct)
     {
-        string? languageName = isSourcePage ? compareRequest.SourceLanguageName : compareRequest.TargetLanguageName;
+        var language = isSourcePage ? compareRequest.SourceLanguage : compareRequest.TargetLanguage;
         var versionStatus = isSourcePage ? compareRequest.SourceVersionStatus : compareRequest.TargetVersionStatus;
         bool isPreview = versionStatus is VersionStatus.Draft or VersionStatus.InitialDraft;
         var parameters = new RetrieveAllPagesParameters
         {
             ChannelName = compareRequest.WebsiteChannelName,
             IsForPreview = isPreview,
-            LanguageName = languageName,
+            LanguageName = language.LanguageName,
             IncludeSecuredItems = true,
             UseLanguageFallbacks = false
         };
@@ -114,26 +115,28 @@ public class ComparableDataRetriever(IContentRetriever contentRetriever) : IComp
             parameters,
             q => q.Where(w => w.WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), compareRequest.ContentItemID)),
             RetrievalCacheSettings.CacheDisabled,
-            (container, mappedResult) => PageDataBinder(container, fields),
+            (container, mappedResult) => PageDataBinder(container, fields, language, ct),
             ct);
 
         return result.FirstOrDefault();
     }
 
 
-    private static async Task<PageData?> PageDataBinder(
+    private async Task<PageData?> PageDataBinder(
         IContentQueryDataContainer container,
-        IEnumerable<FormFieldInfo> fields)
+        IEnumerable<FormFieldInfo> fields,
+        ContentLanguage language,
+        CancellationToken ct)
     {
         // Build field values
         var fieldValues = new Dictionary<string, string>();
-        foreach (string field in fields.Select(f => f.Name))
+        foreach (var field in fields)
         {
-            object value = container.GetValue<object>(field);
-            string? stringRepresentation = ValidationHelper.GetString(value, null);
+            object value = container.GetValue<object>(field.Name);
+            string? stringRepresentation = await GetStringRepresentation(field, value, language, ct);
             if (!string.IsNullOrEmpty(stringRepresentation))
             {
-                fieldValues.Add(field, stringRepresentation);
+                fieldValues.Add(field.Name, stringRepresentation);
             }
         }
 
@@ -142,6 +145,52 @@ public class ComparableDataRetriever(IContentRetriever contentRetriever) : IComp
             container.GetValue<string>(nameof(ContentItemCommonDataInfo.ContentItemCommonDataVisualBuilderWidgets)) ?? string.Empty;
 
         return new PageData(fieldValues, pageBuilderWidgets);
+    }
+
+
+    private async Task<string?> GetStringRepresentation(
+        FormFieldInfo field,
+        object value,
+        ContentLanguage language,
+        CancellationToken ct)
+    {
+        string? stringRepresentation = ValidationHelper.GetString(value, null);
+        if (string.IsNullOrEmpty(stringRepresentation))
+        {
+            return null;
+        }
+
+        // Convert content item references (GUIDs) to display names
+        if (field.DataType == FieldDataType.ContentItemReference)
+        {
+            var references = JsonConvert.DeserializeObject<List<ContentItemReference>>(stringRepresentation)
+                ?? throw new InvalidOperationException($"Failed to deserialize content item references for field {field.Name}.");
+            List<string> referenceNames = [];
+            foreach (var reference in references.Select(r => r.Identifier))
+            {
+                string? name = await GetContentItemDisplayName(reference, language.LanguageID, ct) ?? "[Not translated]";
+                referenceNames.Add($"{name} ({reference})");
+            }
+
+            return string.Join(", ", referenceNames);
+        }
+
+        return stringRepresentation;
+    }
+
+
+    private async Task<string?> GetContentItemDisplayName(Guid contentItemGuid, int languageId, CancellationToken ct)
+    {
+        int contentItemId = await contentItemInfoProvider.Get()
+            .WhereEquals(nameof(ContentItemInfo.ContentItemGUID), contentItemGuid)
+            .AsSingleColumn(nameof(ContentItemInfo.ContentItemID))
+            .GetScalarResultAsync(0, ct);
+
+        return await contentItemLanguageMetadataInfoProvider.Get()
+            .WhereEquals(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentItemID), contentItemId)
+            .WhereEquals(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentLanguageID), languageId)
+            .AsSingleColumn(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataDisplayName))
+            .GetScalarResultAsync<string?>(null, ct);
     }
 
 

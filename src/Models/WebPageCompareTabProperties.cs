@@ -12,31 +12,31 @@ namespace XperienceCommunity.Compare.Models;
 public class WebPageCompareTabProperties : WebPageBaseClientProperties
 {
     /// <summary>
-    /// The ID of the content item selected in the administration.
+    /// The source web page's content item ID.
     /// </summary>
     public int ContentItemID { get; set; }
 
 
     /// <summary>
-    /// The name of the website channel for the selected web page.
+    /// The source web page's website channel name.
     /// </summary>
     public string? WebsiteChannelName { get; set; }
 
 
     /// <summary>
-    /// The ID of the selected web page's content type class.
+    /// The source web page's content type class ID.
     /// </summary>
     public int ContentTypeClassID { get; set; }
 
 
     /// <summary>
-    /// The name of the language for the selected web page.
+    /// The source web page's language.
     /// </summary>
-    public string? SourceLanguageName { get; set; }
+    public ContentLanguage SourceLanguage { get; set; }
 
 
     /// <summary>
-    /// The version status of the selected web page.
+    /// The source web page's version status.
     /// </summary>
     public int SourceVersionStatus { get; set; }
 
@@ -48,7 +48,7 @@ public class WebPageCompareTabProperties : WebPageBaseClientProperties
 
 
     /// <summary>
-    /// A collection of valid comparison targets for the selected web page.
+    /// A collection of valid comparison targets for the source web page.
     /// </summary>
     public IEnumerable<CompareTarget> CompareTargets { get; set; } = [];
 }

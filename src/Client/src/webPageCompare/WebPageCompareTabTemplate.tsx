@@ -29,24 +29,23 @@ const Commands = {
  * The front-end template for the web page Compare tab.
  */
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
-    console.log(props);
     const compareRequest: CompareRequest = {
         contentItemID: props.contentItemID,
         websiteChannelName: props.websiteChannelName,
         contentTypeClassID: props.contentTypeClassID,
-        sourceLanguageName: props.sourceLanguageName,
+        sourceLanguage: props.sourceLanguage,
         sourceVersionStatus: props.sourceVersionStatus
     };
     let compareButtonOriginalContent: string;
     const compareButtonRef = useRef<HTMLButtonElement>(null);
     const [comparableData, setComparableData] = useState<ComparableWebPageData>();
-    const [targetLanguageName, setTargetLanguageName] = useState(props.sourceLanguageName);
+    const [targetLanguage, setTargetLanguage] = useState(props.sourceLanguage);
     const [targetVersionStatus, setTargetVersionStatus] = useState<number | undefined>();
     const [showDiffs, setShowDiffs] = useState(false);
     const { execute: compare } = usePageCommand<ComparableWebPageData, CompareRequest>(Commands.Compare, {
         before: () => {
             // Validate selections, cancel if invalid
-            if (!targetLanguageName || !targetVersionStatus) {
+            if (!targetLanguage || !targetVersionStatus) {
                 setComparableData({ errorMessage: 'Target page selection incomplete.', fields: [] })
 
                 return false;
@@ -57,7 +56,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 compareButtonOriginalContent = compareButtonRef.current.innerHTML;
                 compareButtonRef.current.innerHTML = "Loading...";
             }
-            compareRequest.targetLanguageName = targetLanguageName;
+            compareRequest.targetLanguage = targetLanguage;
             compareRequest.targetVersionStatus = targetVersionStatus;
         },
         after: data => {
@@ -81,10 +80,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
      */
     const variantExistsInVersionStatus = (versionStatuses: VersionStatus[]) =>
         props.compareTargets.some(target => versionStatuses.includes(target.versionStatus) &&
-            target.languageName == targetLanguageName);
-
-    const getSourcePageLanguageDisplayName = () => props.languages
-        .find(l => l.languageName === props.sourceLanguageName)?.languageDisplayName ?? '(Current language)';
+            target.languageName == targetLanguage.languageName);
 
     const getSourcePageVersionStatusName = () => {
         switch (props.sourceVersionStatus) {
@@ -105,7 +101,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                         <Headline size={HeadlineSize.L}>This page</Headline>
                         <Row>
                             <Select disabled={true} label='Language'>
-                                <MenuItem primaryLabel={getSourcePageLanguageDisplayName()} selected />
+                                <MenuItem primaryLabel={props.sourceLanguage.languageDisplayName} selected />
                             </Select>
                             <Select disabled={true} label='Version'>
                                 <MenuItem primaryLabel={getSourcePageVersionStatusName()} selected />
@@ -144,8 +140,9 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                         <Row alignX={LayoutAlignment.End}>
                             <Select
                                 label='Language'
-                                value={targetLanguageName}
-                                onChange={(e) => setTargetLanguageName(e ?? '')}>
+                                value={targetLanguage.languageName}
+                                onChange={(e) => setTargetLanguage(
+                                    props.languages.find(l => l.languageName === (e ?? '')) ?? props.sourceLanguage)}>
                                 {
                                     props.languages.map(l =>
                                         <MenuItem
@@ -163,7 +160,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                     primaryLabel='Draft'
                                     value={VersionStatus.Draft.toString()}
                                     disabled={!variantExistsInVersionStatus([VersionStatus.InitialDraft, VersionStatus.Draft])} />
-                                    <MenuItem
+                                 <MenuItem
                                     primaryLabel='Published'
                                     value={VersionStatus.Published.toString()}
                                     disabled={!variantExistsInVersionStatus([VersionStatus.Published])} />

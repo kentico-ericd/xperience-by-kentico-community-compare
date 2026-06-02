@@ -4,7 +4,7 @@ export interface WebPageCompareTabProperties {
     readonly contentItemID: number;
     readonly websiteChannelName: string;
     readonly contentTypeClassID: number;
-    readonly sourceLanguageName: string;
+    readonly sourceLanguage: ContentLanguage;
     readonly sourceVersionStatus: VersionStatus;
     readonly languages: ContentLanguage[];
     readonly compareTargets: CompareTarget[];
@@ -14,8 +14,8 @@ export interface CompareRequest {
     contentItemID: number;
     websiteChannelName: string;
     contentTypeClassID: number;
-    sourceLanguageName: string;
-    targetLanguageName?: string;
+    sourceLanguage: ContentLanguage;
+    targetLanguage?: ContentLanguage;
     sourceVersionStatus: VersionStatus;
     targetVersionStatus?: VersionStatus;
 }

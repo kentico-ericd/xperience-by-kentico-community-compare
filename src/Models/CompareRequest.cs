@@ -14,27 +14,27 @@ public class CompareRequest
 
 
     /// <summary>
-    /// The name of the website channel for the selected web page.
+    /// The name of the website channel for the source web page.
     /// </summary>
     public string? WebsiteChannelName { get; set; }
 
 
     /// <summary>
-    /// The ID of the selected web page's content type class.
+    /// The ID of the source web page's content type class.
     /// </summary>
     public int ContentTypeClassID { get; set; }
 
 
     /// <summary>
-    /// The name of the language for the selected web page.
+    /// The language for the source web page.
     /// </summary>
-    public string? SourceLanguageName { get; set; }
+    public ContentLanguage SourceLanguage { get; set; }
 
 
     /// <summary>
-    /// The name of the language for the target web page.
+    /// The language for the target web page.
     /// </summary>
-    public string? TargetLanguageName { get; set; }
+    public ContentLanguage TargetLanguage { get; set; }
 
 
     /// <summary>
