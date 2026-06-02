@@ -4,7 +4,6 @@ using CMS.DataEngine;
 using CMS.FormEngine;
 using CMS.Helpers;
 using CMS.Websites;
-using CMS.Websites.Internal;
 
 using Kentico.Content.Web.Mvc;
 
@@ -15,9 +14,7 @@ namespace XperienceCommunity.Compare.Services;
 /// <summary>
 /// Default implementation of <see cref="IComparableDataRetriever"/>.
 /// </summary>
-public class ComparableDataRetriever(
-    IContentRetriever contentRetriever,
-    IInfoProvider<WebPageItemInfo> webPageItemInfoProvider) : IComparableDataRetriever
+public class ComparableDataRetriever(IContentRetriever contentRetriever) : IComparableDataRetriever
 {
     public async Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest, CancellationToken ct)
     {
@@ -25,23 +22,16 @@ public class ComparableDataRetriever(
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.TargetLanguageName);
         ArgumentException.ThrowIfNullOrEmpty(compareRequest.WebsiteChannelName);
 
-        int contentItemId = GetWebPageContentItemID(compareRequest.WebPageID);
-        if (contentItemId == default)
-        {
-            throw new InvalidOperationException($"Failed to retrieve content item ID for web page {compareRequest.WebPageID}.");
-        }
         var fieldsForCompare = GetFieldsForCompare(compareRequest.ContentTypeClassID);
 
         // For performance reasons, get target page first because it might not exist and we can avoid querying the source page
         var targetPageData = await GetWebPageData(
             false,
-            contentItemId,
             compareRequest,
             fieldsForCompare,
             ct) ?? throw new InvalidOperationException("Failed to retrieve values for target page.");
         var sourcePageData = await GetWebPageData(
             true,
-            contentItemId,
             compareRequest,
             fieldsForCompare,
             ct) ?? throw new InvalidOperationException("Failed to retrieve values for source page.");
@@ -100,13 +90,11 @@ public class ComparableDataRetriever(
     /// Retrieves web page data for a specified content item and language context.
     /// </summary>
     /// <param name="isSourcePage">Indicates whether to use the source or target web page version.</param>
-    /// <param name="contentItemId">The identifier of the content item to retrieve.</param>
     /// <param name="compareRequest">The compare request containing language and version information.</param>
     /// <param name="fields">The collection of form field metadata to bind to the page data.</param>
     /// <param name="ct">A cancellation token to observe while waiting for the task to complete.</param>
     private async Task<PageData?> GetWebPageData(
         bool isSourcePage,
-        int contentItemId,
         CompareRequest compareRequest,
         IEnumerable<FormFieldInfo> fields,
         CancellationToken ct)
@@ -124,7 +112,7 @@ public class ComparableDataRetriever(
         };
         var result = await contentRetriever.RetrieveAllPages<PageData?>(
             parameters,
-            q => q.Where(w => w.WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), contentItemId)),
+            q => q.Where(w => w.WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), compareRequest.ContentItemID)),
             RetrievalCacheSettings.CacheDisabled,
             (container, mappedResult) => PageDataBinder(container, fields),
             ct);
@@ -167,13 +155,6 @@ public class ComparableDataRetriever(
 
         return formInfoWithSchema.GetFields(true, false);
     }
-
-
-    private int GetWebPageContentItemID(int webPageId) =>
-        webPageItemInfoProvider.Get()
-            .WhereEquals(nameof(WebPageItemInfo.WebPageItemID), webPageId)
-            .AsSingleColumn(nameof(WebPageItemInfo.WebPageItemContentItemID))
-            .GetScalarResult<int>();
 }
 
 public readonly record struct PageData(Dictionary<string, string> FieldValues, string PageBuilderWidgets);

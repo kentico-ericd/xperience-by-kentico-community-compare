@@ -8,9 +8,9 @@ namespace XperienceCommunity.Compare.Models;
 public class CompareRequest
 {
     /// <summary>
-    /// The ID of the web page selected in the administration.
+    /// The ID of the content item selected in the administration.
     /// </summary>
-    public int WebPageID { get; set; }
+    public int ContentItemID { get; set; }
 
 
     /// <summary>

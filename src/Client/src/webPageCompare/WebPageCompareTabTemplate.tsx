@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
     Box,
     Button,
@@ -18,30 +18,20 @@ import {
 } from "@kentico/xperience-admin-components";
 import { usePageCommand } from "@kentico/xperience-admin-base";
 import { CompareRequest, ComparableWebPageData, WebPageCompareTabProperties, VersionStatus } from "./WebPageCompareTabTemplate.types";
-import ReactDiffViewer, { ReactDiffViewerStylesOverride } from "react-diff-viewer";
+import { WebPageCompareComponent } from "./webPageCompareComponent";
 
 const Commands = {
     /** Command to compare the selected web pages. */
     Compare: "Compare",
 };
 
-enum RenderState {
-    /** The comparison has not been run yet. */
-    NotRun,
-    /** An error occurred during the comparison. */
-    Error,
-    /** No differences were found between the source and target pages. */
-    NoDifferences,
-    /** Differences were found between the source and target pages. */
-    Differences
-};
-
 /**
  * The front-end template for the web page Compare tab.
  */
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
+    console.log(props);
     const compareRequest: CompareRequest = {
-        webPageID: props.webPageID,
+        contentItemID: props.contentItemID,
         websiteChannelName: props.websiteChannelName,
         contentTypeClassID: props.contentTypeClassID,
         sourceLanguageName: props.sourceLanguageName,
@@ -52,7 +42,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
     const [comparableData, setComparableData] = useState<ComparableWebPageData>();
     const [targetLanguageName, setTargetLanguageName] = useState(props.sourceLanguageName);
     const [targetVersionStatus, setTargetVersionStatus] = useState<number | undefined>();
-    const [enableDiffs, setDiffsEnabled] = useState(false);
+    const [showDiffs, setShowDiffs] = useState(false);
     const { execute: compare } = usePageCommand<ComparableWebPageData, CompareRequest>(Commands.Compare, {
         before: () => {
             // Validate selections, cancel if invalid
@@ -81,21 +71,17 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         data: compareRequest
     });
 
-    const diffViewerStyles: ReactDiffViewerStylesOverride = {
-        line: {
-            fontSize: '12px'
-        },
-        diffContainer: {
-            tableLayout: 'fixed',
-            wordWrap: 'break-word'
-        },
-        variables: {
-            light: {
-                addedBackground: '#fafbfc',
-                removedBackground: '#fafbfc',
-            }
-        },
-    };
+    /**
+     * Returns true if any compare target exists for the given language.
+     */
+    const variantExistsInLanguage = (languageName: string) => props.compareTargets.some(target => target.languageName === languageName);
+
+    /**
+     * Returns true if any compare target exists for the given version statuses, within the currently selected target language.
+     */
+    const variantExistsInVersionStatus = (versionStatuses: VersionStatus[]) =>
+        props.compareTargets.some(target => versionStatuses.includes(target.versionStatus) &&
+            target.languageName == targetLanguageName);
 
     const getSourcePageLanguageDisplayName = () => props.languages
         .find(l => l.languageName === props.sourceLanguageName)?.languageDisplayName ?? '(Current language)';
@@ -110,94 +96,10 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         return '(Current version)';
     };
 
-    /**
-     * Determines what to render based on the current state of comparableData.
-     */
-    const getRenderState = (): RenderState => {
-        if (!comparableData) {
-            return RenderState.NotRun;
-        }
-
-        if (comparableData.errorMessage) {
-            return RenderState.Error;
-        }
-
-        if ((comparableData.fields.length > 0 ||
-            (comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets)))
-        {
-            return RenderState.Differences;
-        }
-
-        return RenderState.NoDifferences;
-    };
-
-    const renderNotRun = () => <Row alignX={LayoutAlignment.Center}>
-        {/* Currently there is no message displayed when tool is not run */}
-    </Row>
-
-    /**
-     * Renders a friendly message when no differences are found between the source and target pages.
-     */
-    const renderNoDifferences = () => <Row alignX={LayoutAlignment.Center}>
-        <Headline size={HeadlineSize.M}>No differences found</Headline>
-    </Row>
-
-    /**
-     * Renders an error message when an exception occurs during comparison.
-     */
-    const renderError = () => <Row alignX={LayoutAlignment.Center}>
-        <Stack align={LayoutAlignment.Center}>
-            <Headline size={HeadlineSize.M}>Something went wrong</Headline>
-            <Headline size={HeadlineSize.S}>Error "{comparableData?.errorMessage}" occurred.
-                The Event Log may contain more details.</Headline>
-        </Stack>
-    </Row>
-
-    /**
-     * Renders the differences between the source and target pages. This includes field differences as well as page builder widget
-     * differences (if available).
-     */
-    const renderDifferences = () => <>
-        {comparableData && comparableData.fields.length > 0 && comparableData.fields.map(f =>
-            <Column cols={Cols.Col12}>
-                <Box spacing={Spacing.L}>
-                    <Row alignX={LayoutAlignment.Center}>
-                        <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
-                        <ReactDiffViewer
-                            splitView={true}
-                            hideLineNumbers={true}
-                            disableWordDiff={!enableDiffs}
-                            extraLinesSurroundingDiff={0}
-                            styles={diffViewerStyles}
-                            oldValue={f.sourceValue}
-                            newValue={f.targetValue} />
-                    </Row>
-                </Box>
-            </Column>
-        )}
-        {comparableData && comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets &&
-            <Column cols={Cols.Col12}>
-                <Box spacing={Spacing.L}>
-                    <Row alignX={LayoutAlignment.Center}>
-                        <Headline size={HeadlineSize.M}>Widgets</Headline>
-                        <ReactDiffViewer
-                            splitView={true}
-                            hideLineNumbers={true}
-                            disableWordDiff={!enableDiffs}
-                            extraLinesSurroundingDiff={0}
-                            styles={diffViewerStyles}
-                            oldValue={comparableData.sourcePageBuilderWidgets}
-                            newValue={comparableData.targetPageBuilderWidgets} />
-                    </Row>
-                </Box>
-            </Column>
-        }
-    </>
-
-
     return (
         <Stack spacing={Spacing.L}>
             <Row>
+                {/* Left column- source page */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
                         <Headline size={HeadlineSize.L}>This page</Headline>
@@ -212,6 +114,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                     </Box>
                 </Column>
 
+                {/* Middle column- actions */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
                         <Row alignX={LayoutAlignment.Center}>
@@ -224,14 +127,15 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                     onClick={() => compare()} icon='xp-doc-copy' />
                                 <Checkbox
                                     label='Show diffs'
-                                    checked={enableDiffs}
-                                    onChange={(_, checked) => setDiffsEnabled(checked)} />
+                                    checked={showDiffs}
+                                    onChange={(_, checked) => setShowDiffs(checked)} />
                             </Stack>
                         
                         </Row>
                     </Box>
                 </Column>
 
+                {/* Right column- target page */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
                         <Row alignX={LayoutAlignment.End}>
@@ -246,7 +150,8 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                     props.languages.map(l =>
                                         <MenuItem
                                             primaryLabel={l.languageDisplayName}
-                                            value={l.languageName} />
+                                            value={l.languageName}
+                                            disabled={!variantExistsInLanguage(l.languageName)} />
                                     )
                                 }
                             </Select>
@@ -257,31 +162,18 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                 <MenuItem
                                     primaryLabel='Draft'
                                     value={VersionStatus.Draft.toString()}
-                                    disabled={targetLanguageName === props.sourceLanguageName &&
-                                        props.sourceVersionStatus === VersionStatus.Draft} />
+                                    disabled={!variantExistsInVersionStatus([VersionStatus.InitialDraft, VersionStatus.Draft])} />
                                     <MenuItem
                                     primaryLabel='Published'
                                     value={VersionStatus.Published.toString()}
-                                    disabled={props.sourceVersionStatus == VersionStatus.InitialDraft ||
-                                        (targetLanguageName === props.sourceLanguageName &&
-                                        props.sourceVersionStatus === VersionStatus.Published)} />
+                                    disabled={!variantExistsInVersionStatus([VersionStatus.Published])} />
                             </Select>
                         </Row>
                     </Box>
                 </Column>
             </Row>
 
-            {(() => {
-                const state = getRenderState();
-                switch (state) {
-                    case RenderState.Error: return renderError();
-                    case RenderState.NoDifferences: return renderNoDifferences();
-                    case RenderState.Differences: return renderDifferences();
-                    case RenderState.NotRun:
-                    default:
-                        return renderNotRun();
-                }
-            })()}
+            <WebPageCompareComponent comparableWebPageData={comparableData} showDiffs={showDiffs} />
 
         </Stack>
     );
