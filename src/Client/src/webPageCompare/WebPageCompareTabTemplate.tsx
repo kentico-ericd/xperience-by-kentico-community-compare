@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { RefObject, useRef, useState } from "react";
 import {
     Box,
     Button,
@@ -7,17 +7,18 @@ import {
     Checkbox,
     Cols,
     Column,
-    Headline,
-    HeadlineSize,
+    DropDownActionMenu,
+    Icon,
     LayoutAlignment,
     MenuItem,
+    MenuItemWithSubmenu,
     Row,
-    Select,
+    SelectMenu,
     Spacing,
     Stack
 } from "@kentico/xperience-admin-components";
 import { usePageCommand } from "@kentico/xperience-admin-base";
-import { CompareRequest, ComparableWebPageData, WebPageCompareTabProperties, VersionStatus } from "./WebPageCompareTabTemplate.types";
+import { CompareRequest, ComparableWebPageData, WebPageCompareTabProperties, VersionStatus, ContentLanguage } from "./WebPageCompareTabTemplate.types";
 import { WebPageCompareComponent } from "./webPageCompareComponent";
 
 const Commands = {
@@ -39,7 +40,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
     let compareButtonOriginalContent: string;
     const compareButtonRef = useRef<HTMLButtonElement>(null);
     const [comparableData, setComparableData] = useState<ComparableWebPageData>();
-    const [targetLanguage, setTargetLanguage] = useState(props.sourceLanguage);
+    const [targetLanguage, setTargetLanguage] = useState<ContentLanguage>();
     const [targetVersionStatus, setTargetVersionStatus] = useState<number | undefined>();
     const [showDiffs, setShowDiffs] = useState(false);
     const { execute: compare } = usePageCommand<ComparableWebPageData, CompareRequest>(Commands.Compare, {
@@ -71,26 +72,28 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
     });
 
     /**
-     * Returns true if any compare target exists for the given language.
+     * Returns true if any compare target exists for the given version statuses, within the provided language.
      */
-    const variantExistsInLanguage = (languageName: string) => props.compareTargets.some(target => target.languageName === languageName);
-
-    /**
-     * Returns true if any compare target exists for the given version statuses, within the currently selected target language.
-     */
-    const variantExistsInVersionStatus = (versionStatuses: VersionStatus[]) =>
+    const variantExistsInLanguageAndVersionStatus = (languageName: string, versionStatuses: VersionStatus[]) =>
         props.compareTargets.some(target => versionStatuses.includes(target.versionStatus) &&
-            target.languageName == targetLanguage.languageName);
+            target.languageName == languageName);
 
-    const getSourcePageVersionStatusName = () => {
-        switch (props.sourceVersionStatus) {
+    const getVersionStatusName = (versionStatus: number) => {
+        switch (versionStatus) {
             case VersionStatus.InitialDraft:
             case VersionStatus.Draft: return 'Draft';
             case VersionStatus.Published: return 'Published';
+            default: return '(Current version)'
         };
-
-        return '(Current version)';
     };
+
+    const getTargetPageLabel = () => {
+        if (targetLanguage && targetVersionStatus) {
+            return `Target page: ${targetLanguage.languageDisplayName} ${getVersionStatusName(targetVersionStatus)}`;
+        }
+
+        return 'Target page not selected';
+    }
 
     return (
         <Stack spacing={Spacing.L}>
@@ -98,15 +101,9 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 {/* Left column- source page */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
-                        <Headline size={HeadlineSize.L}>This page</Headline>
-                        <Row>
-                            <Select disabled={true} label='Language'>
-                                <MenuItem primaryLabel={props.sourceLanguage.languageDisplayName} selected />
-                            </Select>
-                            <Select disabled={true} label='Version'>
-                                <MenuItem primaryLabel={getSourcePageVersionStatusName()} selected />
-                            </Select>
-                        </Row>
+                        <Button
+                            color={ButtonColor.Quinary}
+                            label={`This page: ${props.sourceLanguage.languageDisplayName} ${getVersionStatusName(props.sourceVersionStatus)}`} />
                     </Box>
                 </Column>
 
@@ -135,36 +132,48 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
                         <Row alignX={LayoutAlignment.End}>
-                            <Headline size={HeadlineSize.L}>Target page</Headline>
-                        </Row>
-                        <Row alignX={LayoutAlignment.End}>
-                            <Select
-                                label='Language'
-                                value={targetLanguage.languageName}
-                                onChange={(e) => setTargetLanguage(
-                                    props.languages.find(l => l.languageName === (e ?? '')) ?? props.sourceLanguage)}>
-                                {
-                                    props.languages.map(l =>
-                                        <MenuItem
-                                            primaryLabel={l.languageDisplayName}
-                                            value={l.languageName}
-                                            disabled={!variantExistsInLanguage(l.languageName)} />
-                                    )
-                                }
-                            </Select>
-                            <Select
-                                label='Version'
-                                placeholder='(Select version)'
-                                onChange={(e) => setTargetVersionStatus(Number.parseInt(e ?? ''))}>
-                                <MenuItem
-                                    primaryLabel='Draft'
-                                    value={VersionStatus.Draft.toString()}
-                                    disabled={!variantExistsInVersionStatus([VersionStatus.InitialDraft, VersionStatus.Draft])} />
-                                 <MenuItem
-                                    primaryLabel='Published'
-                                    value={VersionStatus.Published.toString()}
-                                    disabled={!variantExistsInVersionStatus([VersionStatus.Published])} />
-                            </Select>
+                            <DropDownActionMenu
+                                renderTrigger={(ref, onTriggerClick) => (
+                                    <Button
+                                        color={ButtonColor.Quinary}
+                                        buttonRef={ref as RefObject<HTMLButtonElement>}
+                                        onClick={() => onTriggerClick()}
+                                        label={getTargetPageLabel()} />
+                                )}>
+                                {props.languages.map((language) => (
+                                    <MenuItemWithSubmenu
+                                        primaryLabel={language.languageDisplayName}
+                                        disabled={!variantExistsInLanguageAndVersionStatus(
+                                            language.languageName, [VersionStatus.InitialDraft, VersionStatus.Draft, VersionStatus.Published])}
+                                        leadingElement={{
+                                            type: 'icon',
+                                            element: <Icon name={language.flagName} />
+                                        }}
+                                        submenuContent={
+                                            <SelectMenu>
+                                                <MenuItem
+                                                    primaryLabel='Draft'
+                                                    value={VersionStatus.Draft.toString()}
+                                                    disabled={!variantExistsInLanguageAndVersionStatus(
+                                                        language.languageName, [VersionStatus.InitialDraft, VersionStatus.Draft])}
+                                                    onClick={() => {
+                                                        setTargetLanguage(language);
+                                                        setTargetVersionStatus(VersionStatus.Draft);
+                                                    }} />
+                                                <MenuItem
+                                                    primaryLabel='Published'
+                                                    value={VersionStatus.Published.toString()}
+                                                    disabled={!variantExistsInLanguageAndVersionStatus(
+                                                        language.languageName, [VersionStatus.Published])}
+                                                    onClick={() => {
+                                                        setTargetLanguage(language);
+                                                        setTargetVersionStatus(VersionStatus.Published);
+                                                    }} />
+                                            </SelectMenu>
+                                        }
+                                    />
+                                ))}
+                            </DropDownActionMenu>
                         </Row>
                     </Box>
                 </Column>
