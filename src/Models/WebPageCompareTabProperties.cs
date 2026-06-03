@@ -30,15 +30,9 @@ public class WebPageCompareTabProperties : WebPageBaseClientProperties
 
 
     /// <summary>
-    /// The source web page's language.
+    /// The source web page's content item data.
     /// </summary>
-    public ContentLanguage SourceLanguage { get; set; }
-
-
-    /// <summary>
-    /// The source web page's version status.
-    /// </summary>
-    public int SourceVersionStatus { get; set; }
+    public BasicContentItem SourceContentItem { get; set; }
 
 
     /// <summary>
@@ -48,9 +42,9 @@ public class WebPageCompareTabProperties : WebPageBaseClientProperties
 
 
     /// <summary>
-    /// A collection of valid comparison targets for the source web page.
+    /// A collection of content items available for comparison.
     /// </summary>
-    public IEnumerable<CompareTarget> CompareTargets { get; set; } = [];
+    public IEnumerable<BasicContentItem> CompareTargets { get; set; } = [];
 }
 
 /// <summary>
@@ -63,8 +57,8 @@ public class WebPageCompareTabProperties : WebPageBaseClientProperties
 public readonly record struct ContentLanguage(int LanguageID, string LanguageName, string LanguageDisplayName, string FlagName);
 
 /// <summary>
-/// Represents a potential comparison target, consisting of a language and version status.
+/// Represents the basic data of a content item.
 /// </summary>
-/// <param name="LanguageName">The name of the target content item's language.</param>
-/// <param name="VersionStatus">The version status of the target content item.</param>
-public readonly record struct CompareTarget(string LanguageName, VersionStatus VersionStatus);
+/// <param name="Language">The language of the content item.</param>
+/// <param name="VersionStatus">The version status of the content item.</param>
+public readonly record struct BasicContentItem(ContentLanguage Language, VersionStatus VersionStatus);

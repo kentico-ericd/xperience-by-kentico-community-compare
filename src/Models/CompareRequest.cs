@@ -25,26 +25,8 @@ public class CompareRequest
     public int ContentTypeClassID { get; set; }
 
 
-    /// <summary>
-    /// The language for the source web page.
-    /// </summary>
-    public ContentLanguage SourceLanguage { get; set; }
+    public BasicContentItem SourceContentItem { get; set; }
 
 
-    /// <summary>
-    /// The language for the target web page.
-    /// </summary>
-    public ContentLanguage TargetLanguage { get; set; }
-
-
-    /// <summary>
-    /// The version status of the selected web page.
-    /// </summary>
-    public VersionStatus SourceVersionStatus { get; set; }
-
-
-    /// <summary>
-    /// The version status of the target web page.
-    /// </summary>
-    public VersionStatus TargetVersionStatus { get; set; }
+    public BasicContentItem TargetContentItem { get; set; }
 }

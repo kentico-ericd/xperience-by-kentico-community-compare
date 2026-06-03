@@ -34,8 +34,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         contentItemID: props.contentItemID,
         websiteChannelName: props.websiteChannelName,
         contentTypeClassID: props.contentTypeClassID,
-        sourceLanguage: props.sourceLanguage,
-        sourceVersionStatus: props.sourceVersionStatus
+        sourceContentItem: props.sourceContentItem
     };
     let compareButtonOriginalContent: string;
     const compareButtonRef = useRef<HTMLButtonElement>(null);
@@ -57,8 +56,11 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 compareButtonOriginalContent = compareButtonRef.current.innerHTML;
                 compareButtonRef.current.innerHTML = "Loading...";
             }
-            compareRequest.targetLanguage = targetLanguage;
-            compareRequest.targetVersionStatus = targetVersionStatus;
+
+            compareRequest.targetContentItem = {
+                language: targetLanguage,
+                versionStatus: targetVersionStatus
+            };
         },
         after: data => {
             if (compareButtonRef.current) {
@@ -76,7 +78,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
      */
     const variantExistsInLanguageAndVersionStatus = (languageName: string, versionStatuses: VersionStatus[]) =>
         props.compareTargets.some(target => versionStatuses.includes(target.versionStatus) &&
-            target.languageName == languageName);
+            target.language.languageName == languageName);
 
     const getVersionStatusName = (versionStatus: number) => {
         switch (versionStatus) {
@@ -103,7 +105,8 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                     <Box spacing={Spacing.L}>
                         <Button
                             color={ButtonColor.Quinary}
-                            label={`This page: ${props.sourceLanguage.languageDisplayName} ${getVersionStatusName(props.sourceVersionStatus)}`} />
+                            label={`This page: ${props.sourceContentItem.language.languageDisplayName} 
+                            ${getVersionStatusName(props.sourceContentItem.versionStatus)}`} />
                     </Box>
                 </Column>
 
@@ -123,7 +126,6 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                     checked={showDiffs}
                                     onChange={(_, checked) => setShowDiffs(checked)} />
                             </Stack>
-                        
                         </Row>
                     </Box>
                 </Column>

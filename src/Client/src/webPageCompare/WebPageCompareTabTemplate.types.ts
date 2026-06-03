@@ -4,20 +4,17 @@ export interface WebPageCompareTabProperties {
     readonly contentItemID: number;
     readonly websiteChannelName: string;
     readonly contentTypeClassID: number;
-    readonly sourceLanguage: ContentLanguage;
-    readonly sourceVersionStatus: VersionStatus;
+    readonly sourceContentItem: BasicContentItem;
     readonly languages: ContentLanguage[];
-    readonly compareTargets: CompareTarget[];
+    readonly compareTargets: BasicContentItem[];
 }
 
 export interface CompareRequest {
     contentItemID: number;
     websiteChannelName: string;
     contentTypeClassID: number;
-    sourceLanguage: ContentLanguage;
-    targetLanguage?: ContentLanguage;
-    sourceVersionStatus: VersionStatus;
-    targetVersionStatus?: VersionStatus;
+    sourceContentItem: BasicContentItem;
+    targetContentItem?: BasicContentItem;
 }
 
 export interface ComparableWebPageData {
@@ -34,8 +31,8 @@ export interface ContentLanguage {
     readonly flagName: IconName;
 }
 
-export interface CompareTarget {
-    readonly languageName: string;
+export interface BasicContentItem {
+    readonly language: ContentLanguage;
     readonly versionStatus: VersionStatus;
 }
 

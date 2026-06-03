@@ -125,16 +125,16 @@ public class WebPageCompareTab(
                     l.ContentLanguageName,
                     l.ContentLanguageDisplayName,
                     l.ContentLanguageFlagIconName));
-        properties.SourceLanguage = properties.Languages.FirstOrDefault(l =>
+        var sourceLanguage = properties.Languages.FirstOrDefault(l =>
             l.LanguageName.Equals(WebPageIdentifier.LanguageName, StringComparison.OrdinalIgnoreCase));
 
         // Get basic web page data
         var dataContainer = await GetWebPageData(
             WebPageIdentifier.WebPageItemID,
             ApplicationIdentifier.WebsiteChannelID,
-            properties.SourceLanguage.LanguageID) ??
+            sourceLanguage.LanguageID) ??
             throw new InvalidOperationException($"Failed to retrieve metadata info for web page {ApplicationIdentifier.WebsiteChannelID}.");
-        properties.SourceVersionStatus = ValidationHelper.GetInteger(
+        int sourceVersionStatus = ValidationHelper.GetInteger(
             dataContainer.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataLatestVersionStatus)),
             0);
         properties.ContentTypeClassID = ValidationHelper.GetInteger(
@@ -154,13 +154,14 @@ public class WebPageCompareTab(
                 var matchingLanguage = properties.Languages.FirstOrDefault(l =>
                     l.LanguageID == c.ContentItemCommonDataContentLanguageID);
 
-                return new CompareTarget(matchingLanguage.LanguageName, c.ContentItemCommonDataVersionStatus);
+                return new BasicContentItem(matchingLanguage, c.ContentItemCommonDataVersionStatus);
             })
             .ToList();
+
+        properties.SourceContentItem = contentItemVariants.Find(c =>
+            c.Language.LanguageName == sourceLanguage.LanguageName && (int)c.VersionStatus == sourceVersionStatus);
         // Remove source version from compare targets
-        contentItemVariants.RemoveAll(v =>
-                v.LanguageName == properties.SourceLanguage.LanguageName &&
-                (int)v.VersionStatus == properties.SourceVersionStatus);
+        contentItemVariants.Remove(properties.SourceContentItem);
         properties.CompareTargets = contentItemVariants;
 
     }

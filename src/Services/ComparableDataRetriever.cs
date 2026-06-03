@@ -100,8 +100,8 @@ public class ComparableDataRetriever(
         IEnumerable<FormFieldInfo> fields,
         CancellationToken ct)
     {
-        var language = isSourcePage ? compareRequest.SourceLanguage : compareRequest.TargetLanguage;
-        var versionStatus = isSourcePage ? compareRequest.SourceVersionStatus : compareRequest.TargetVersionStatus;
+        var language = isSourcePage ? compareRequest.SourceContentItem.Language : compareRequest.TargetContentItem.Language;
+        var versionStatus = isSourcePage ? compareRequest.SourceContentItem.VersionStatus : compareRequest.TargetContentItem.VersionStatus;
         bool isPreview = versionStatus is VersionStatus.Draft or VersionStatus.InitialDraft;
         var parameters = new RetrieveAllPagesParameters
         {
