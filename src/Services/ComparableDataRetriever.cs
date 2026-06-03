@@ -18,8 +18,8 @@ namespace XperienceCommunity.Compare.Services;
 /// </summary>
 public class ComparableDataRetriever(
     IContentRetriever contentRetriever,
-    IInfoProvider<ContentItemInfo> contentItemInfoProvider,
-    IInfoProvider<ContentItemLanguageMetadataInfo> contentItemLanguageMetadataInfoProvider) : IComparableDataRetriever
+    IProgressiveCache progressiveCache,
+    ICacheDependencyBuilderFactory dependencyBuilderFactory) : IComparableDataRetriever
 {
     public async Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest, CancellationToken ct)
     {
@@ -168,7 +168,7 @@ public class ComparableDataRetriever(
             List<string> referenceNames = [];
             foreach (var reference in references.Select(r => r.Identifier))
             {
-                string? name = await GetContentItemDisplayName(reference, language.LanguageID, ct) ?? "[Not translated]";
+                string name = await GetContentItemDisplayName(reference, language.LanguageID, ct) ?? "[Not translated]";
                 referenceNames.Add($"{name} ({reference})");
             }
 
@@ -181,16 +181,35 @@ public class ComparableDataRetriever(
 
     private async Task<string?> GetContentItemDisplayName(Guid contentItemGuid, int languageId, CancellationToken ct)
     {
-        int contentItemId = await contentItemInfoProvider.Get()
+        var query = new DataQuery()
+            .From(new QuerySource(new QuerySourceTable(ContentItemLanguageMetadataInfo.TYPEINFO.ClassStructureInfo.TableName)))
+            .Source(source => source
+                .LeftJoin<ContentItemInfo>(
+                    nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentItemID),
+                    nameof(ContentItemInfo.ContentItemID))
+            )
             .WhereEquals(nameof(ContentItemInfo.ContentItemGUID), contentItemGuid)
-            .AsSingleColumn(nameof(ContentItemInfo.ContentItemID))
-            .GetScalarResultAsync(0, ct);
-
-        return await contentItemLanguageMetadataInfoProvider.Get()
-            .WhereEquals(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentItemID), contentItemId)
             .WhereEquals(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentLanguageID), languageId)
-            .AsSingleColumn(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataDisplayName))
-            .GetScalarResultAsync<string?>(null, ct);
+            .Columns(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataDisplayName));
+
+        return await progressiveCache.LoadAsync(
+            async (cs) =>
+            {
+                var cacheDependencyBuilder = dependencyBuilderFactory.Create();
+                cs.CacheDependency = cacheDependencyBuilder.ForContentItems().ByGuid(contentItemGuid).Builder().Build();
+
+                var data = (await query.GetDataContainerResultAsync(cancellationToken: ct)).FirstOrDefault();
+                if (data is null)
+                {
+                    return null;
+                }
+
+                return ValidationHelper.GetString(
+                    data.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataDisplayName)), null);
+            },
+            new CacheSettings(
+                30,
+                $"{nameof(ComparableDataRetriever)}|{nameof(GetContentItemDisplayName)}|{contentItemGuid}|{languageId}"));
     }
 
 
