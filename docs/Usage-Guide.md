@@ -2,9 +2,9 @@
 
 ## Comparing web pages
 
-To compare web page versions, first select a page in your channel's content tree. On the right side-panel, click the new tab called "Compare." On this page, you will see the current web page language and version on the left half, and the desired **Target** version on the right half.
+To compare web page versions, first select a page in your channel's content tree. On the right side-panel, click the new tab called "Compare." On this page, you will see the current web page details on the left half, and the desired **Target** version on the right half.
 
-Use the drop-downs on the right side of the page to select the language and version of the target page you'd like to compare, then click the **Compare** button in the middle.
+Click the **Select** button on the right side of the page to select the target page of the comparison. Then click the **Compare** button in the middle to run the comparison.
 
 ![Compare example](/images/compareSample.png)
 
