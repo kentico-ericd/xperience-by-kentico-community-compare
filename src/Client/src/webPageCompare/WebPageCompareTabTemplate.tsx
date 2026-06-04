@@ -166,7 +166,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                             {(() => {
                                 const target = getTargetContentItem();
                                 if (!target) {
-                                    return <div style={{ color: 'black' }}>No target page selected.</div>;
+                                    return <div style={{ color: 'black' }}>No target page selected</div>;
                                 }
 
                                 return (

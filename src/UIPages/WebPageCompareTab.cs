@@ -155,7 +155,7 @@ public class WebPageCompareTab(
     }
 
 
-    private Task<List<BasicContentItem>> GetContentItemVariants(int contentItemId, IEnumerable<ContentLanguage> languages)
+    private static async Task<List<BasicContentItem>> GetContentItemVariants(int contentItemId, IEnumerable<ContentLanguage> languages)
     {
         var query = new DataQuery()
             .From(new QuerySource(new QuerySourceTable(ContentItemCommonDataInfo.TYPEINFO.ClassStructureInfo.TableName)))
@@ -181,12 +181,7 @@ public class WebPageCompareTab(
             )
             .WhereEquals(nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentItemID), contentItemId);
 
-        return progressiveCache.LoadAsync(
-            async (cs) =>
-            {
-                cs.CacheDependency = CacheHelper.GetCacheDependency($"webpageitem|byid|{WebPageIdentifier.WebPageItemID}");
-
-                return (await query.GetDataContainerResultAsync())
+        return (await query.GetDataContainerResultAsync())
                     .Select(c =>
                     {
                         int languageId = ValidationHelper.GetInteger(
@@ -202,10 +197,6 @@ public class WebPageCompareTab(
                         return new BasicContentItem(matchingLanguage, (VersionStatus)versionStatus, lastModified, lastModifiedByUser);
                     })
                     .ToList();
-            },
-            new CacheSettings(
-                30,
-                $"{nameof(WebPageCompareTab)}|{nameof(GetContentItemVariants)}|{WebPageIdentifier.WebPageItemID}"));
     }
 
 
