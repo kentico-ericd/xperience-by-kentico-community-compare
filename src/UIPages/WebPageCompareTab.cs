@@ -1,9 +1,12 @@
-﻿using CMS.Base;
+﻿using System.Data;
+
+using CMS.Base;
 using CMS.ContentEngine;
 using CMS.ContentEngine.Internal;
 using CMS.Core;
 using CMS.DataEngine;
 using CMS.Helpers;
+using CMS.Membership;
 using CMS.Websites;
 using CMS.Websites.Internal;
 
@@ -36,7 +39,6 @@ public class WebPageCompareTab(
     IInfoProvider<ChannelInfo> channelInfoProvider,
     IInfoProvider<WebsiteChannelInfo> websiteChannelInfoProvider,
     IInfoProvider<ContentLanguageInfo> contentLanguageInfoProvider,
-    IInfoProvider<ContentItemCommonDataInfo> contentItemCommonDataInfoProvider,
     IAuthenticatedUserAccessor authenticatedUserAccessor,
     IWebPageManagerFactory webPageManagerFactory,
     IPageLinkGenerator pageLinkGenerator) : WebPageBase<WebPageCompareTabProperties>(
@@ -143,27 +145,67 @@ public class WebPageCompareTab(
         properties.ContentItemID = ValidationHelper.GetInteger(dataContainer.GetValue(nameof(ContentItemInfo.ContentItemID)), 0);
 
         // Get all existing versions of content item
-        var contentItemVariants = (await contentItemCommonDataInfoProvider.Get()
-            .WhereEquals(nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentItemID), properties.ContentItemID)
-            .Columns(
-                nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentLanguageID),
-                nameof(ContentItemCommonDataInfo.ContentItemCommonDataVersionStatus))
-            .GetEnumerableTypedResultAsync())
-            .Select(c =>
-            {
-                var matchingLanguage = properties.Languages.FirstOrDefault(l =>
-                    l.LanguageID == c.ContentItemCommonDataContentLanguageID);
-
-                return new BasicContentItem(matchingLanguage, c.ContentItemCommonDataVersionStatus);
-            })
-            .ToList();
-
+        var contentItemVariants = await GetContentItemVariants(properties.ContentItemID, properties.Languages);
         properties.SourceContentItem = contentItemVariants.Find(c =>
             c.Language.LanguageName == sourceLanguage.LanguageName && (int)c.VersionStatus == sourceVersionStatus);
         // Remove source version from compare targets
         contentItemVariants.Remove(properties.SourceContentItem);
         properties.CompareTargets = contentItemVariants;
 
+    }
+
+
+    private Task<List<BasicContentItem>> GetContentItemVariants(int contentItemId, IEnumerable<ContentLanguage> languages)
+    {
+        var query = new DataQuery()
+            .From(new QuerySource(new QuerySourceTable(ContentItemCommonDataInfo.TYPEINFO.ClassStructureInfo.TableName)))
+            .Source(s => s
+                .Join(
+                    new QuerySourceTable(ContentItemLanguageMetadataInfo.TYPEINFO.ClassStructureInfo.TableName),
+                    new WhereCondition(
+                        $"{nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentItemID)} = {nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentItemID)}" +
+                        $" AND {nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentLanguageID)} = {nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentLanguageID)}"
+                    )
+                )
+                .LeftJoin(
+                    new QuerySourceTable(UserInfo.TYPEINFO.ClassStructureInfo.TableName),
+                    nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataModifiedByUserID),
+                    nameof(UserInfo.UserID)
+                )
+            )
+            .Columns(
+                nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentLanguageID),
+                nameof(ContentItemCommonDataInfo.ContentItemCommonDataVersionStatus),
+                nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataModifiedWhen),
+                nameof(UserInfo.UserName)
+            )
+            .WhereEquals(nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentItemID), contentItemId);
+
+        return progressiveCache.LoadAsync(
+            async (cs) =>
+            {
+                cs.CacheDependency = CacheHelper.GetCacheDependency($"webpageitem|byid|{WebPageIdentifier.WebPageItemID}");
+
+                return (await query.GetDataContainerResultAsync())
+                    .Select(c =>
+                    {
+                        int languageId = ValidationHelper.GetInteger(
+                            c.GetValue(nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentLanguageID)), 0);
+                        var matchingLanguage = languages.FirstOrDefault(l =>
+                            l.LanguageID == languageId);
+                        int versionStatus = ValidationHelper.GetInteger(
+                            c.GetValue(nameof(ContentItemCommonDataInfo.ContentItemCommonDataVersionStatus)), 0);
+                        var lastModified = ValidationHelper.GetDateTime(
+                            c.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataModifiedWhen)), DateTime.MinValue);
+                        string lastModifiedByUser = ValidationHelper.GetString(c.GetValue(nameof(UserInfo.UserName)), string.Empty);
+
+                        return new BasicContentItem(matchingLanguage, (VersionStatus)versionStatus, lastModified, lastModifiedByUser);
+                    })
+                    .ToList();
+            },
+            new CacheSettings(
+                30,
+                $"{nameof(WebPageCompareTab)}|{nameof(GetContentItemVariants)}|{WebPageIdentifier.WebPageItemID}"));
     }
 
 

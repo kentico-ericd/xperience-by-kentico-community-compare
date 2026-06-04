@@ -61,4 +61,10 @@ public readonly record struct ContentLanguage(int LanguageID, string LanguageNam
 /// </summary>
 /// <param name="Language">The language of the content item.</param>
 /// <param name="VersionStatus">The version status of the content item.</param>
-public readonly record struct BasicContentItem(ContentLanguage Language, VersionStatus VersionStatus);
+/// <param name="LastModified">The date and time when the content item was last modified.</param>
+/// <param name="LastModifiedByUser">The name of theuser who last modified the content item.</param>
+public readonly record struct BasicContentItem(
+    ContentLanguage Language,
+    VersionStatus VersionStatus,
+    DateTime LastModified,
+    string LastModifiedByUser);

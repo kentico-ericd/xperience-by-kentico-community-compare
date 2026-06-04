@@ -1,6 +1,4 @@
-﻿using CMS.ContentEngine;
-
-namespace XperienceCommunity.Compare.Models;
+﻿namespace XperienceCommunity.Compare.Models;
 
 /// <summary>
 /// Model containing the necessary information to compare two versions of webpage content.
@@ -25,8 +23,14 @@ public class CompareRequest
     public int ContentTypeClassID { get; set; }
 
 
+    /// <summary>
+    /// The source content item.
+    /// </summary>
     public BasicContentItem SourceContentItem { get; set; }
 
 
+    /// <summary>
+    /// The target content item.
+    /// </summary>
     public BasicContentItem TargetContentItem { get; set; }
 }

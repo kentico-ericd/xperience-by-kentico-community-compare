@@ -8,7 +8,10 @@ import {
     Cols,
     Column,
     DropDownActionMenu,
+    Headline,
+    HeadlineSize,
     Icon,
+    Inline,
     LayoutAlignment,
     MenuItem,
     MenuItemWithSubmenu,
@@ -18,7 +21,13 @@ import {
     Stack
 } from "@kentico/xperience-admin-components";
 import { usePageCommand } from "@kentico/xperience-admin-base";
-import { CompareRequest, ComparableWebPageData, WebPageCompareTabProperties, VersionStatus, ContentLanguage } from "./WebPageCompareTabTemplate.types";
+import {
+    CompareRequest,
+    ComparableWebPageData,
+    WebPageCompareTabProperties,
+    VersionStatus,
+    ContentLanguage
+} from "./WebPageCompareTabTemplate.types";
 import { WebPageCompareComponent } from "./webPageCompareComponent";
 
 const Commands = {
@@ -57,10 +66,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 compareButtonRef.current.innerHTML = "Loading...";
             }
 
-            compareRequest.targetContentItem = {
-                language: targetLanguage,
-                versionStatus: targetVersionStatus
-            };
+            compareRequest.targetContentItem = getTargetContentItem();
         },
         after: data => {
             if (compareButtonRef.current) {
@@ -89,13 +95,27 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         };
     };
 
-    const getTargetPageLabel = () => {
-        if (targetLanguage && targetVersionStatus) {
-            return `Target page: ${targetLanguage.languageDisplayName} ${getVersionStatusName(targetVersionStatus)}`;
+    const getTimestamp = (dateTime?: string) => {
+        if (!dateTime) {
+            return 'N/A';
         }
 
-        return 'Target page not selected';
-    }
+        return new Date(Date.parse(dateTime)).toLocaleString();
+    };
+
+    /**
+     * Gets the data of the target content item, or undefined if the target language or version status has not been selected.
+     */
+    const getTargetContentItem = () => {
+        if (!targetLanguage || !targetVersionStatus) {
+            return undefined;
+        }
+
+        return props.compareTargets.find(target =>
+            target.language.languageName === targetLanguage.languageName &&
+            target.versionStatus === targetVersionStatus
+        );
+    };
 
     return (
         <Stack spacing={Spacing.L}>
@@ -103,10 +123,18 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 {/* Left column- source page */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
-                        <Button
-                            color={ButtonColor.Quinary}
-                            label={`This page: ${props.sourceContentItem.language.languageDisplayName} 
-                            ${getVersionStatusName(props.sourceContentItem.versionStatus)}`} />
+                        <Stack spacing={Spacing.S}>
+                            <Headline size={HeadlineSize.M}>This page</Headline>
+                            <div style={{ color: 'black' }}>
+                                <Inline>
+                                    <Icon name={props.sourceContentItem.language.flagName} />
+                                    &nbsp;{props.sourceContentItem.language.languageDisplayName}
+                                    &nbsp;{getVersionStatusName(props.sourceContentItem.versionStatus)}
+                                </Inline>
+                            </div>
+                            <div style={{ color: 'black' }}>Last modified: {getTimestamp(props.sourceContentItem.lastModified)}</div>
+                            <div style={{ color: 'black' }}>Modified by: {props.sourceContentItem.lastModifiedByUser ?? 'N/A'}</div>
+                        </Stack>
                     </Box>
                 </Column>
 
@@ -133,14 +161,37 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 {/* Right column- target page */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
-                        <Row alignX={LayoutAlignment.End}>
+                        <Stack align={LayoutAlignment.End} spacing={Spacing.S}>
+                            <Headline size={HeadlineSize.M}>Target page</Headline>
+                            {(() => {
+                                const target = getTargetContentItem();
+                                if (!target) {
+                                    return <div style={{ color: 'black' }}>No target page selected.</div>;
+                                }
+
+                                return (
+                                    <>
+                                        <div style={{ color: 'black' }}>
+                                            <Inline>
+                                                <Icon name={target.language.flagName} />
+                                                &nbsp;{target.language.languageDisplayName}
+                                                &nbsp;{getVersionStatusName(target.versionStatus)}
+                                            </Inline>
+                                        </div>
+                                        <div style={{ color: 'black' }}>Last modified: {getTimestamp(target.lastModified)}</div>
+                                        <div style={{ color: 'black' }}>Modified by: {target.lastModifiedByUser ?? 'N/A'}</div>
+                                    </>
+                                );
+                            })()}
+
                             <DropDownActionMenu
                                 renderTrigger={(ref, onTriggerClick) => (
                                     <Button
-                                        color={ButtonColor.Quinary}
+                                        size={ButtonSize.XS}
+                                        color={ButtonColor.Secondary}
                                         buttonRef={ref as RefObject<HTMLButtonElement>}
                                         onClick={() => onTriggerClick()}
-                                        label={getTargetPageLabel()} />
+                                        label='Select' />
                                 )}>
                                 {props.languages.map((language) => (
                                     <MenuItemWithSubmenu
@@ -176,7 +227,7 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                     />
                                 ))}
                             </DropDownActionMenu>
-                        </Row>
+                        </Stack>
                     </Box>
                 </Column>
             </Row>

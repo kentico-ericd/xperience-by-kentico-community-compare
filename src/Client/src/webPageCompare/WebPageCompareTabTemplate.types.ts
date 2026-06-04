@@ -34,6 +34,8 @@ export interface ContentLanguage {
 export interface BasicContentItem {
     readonly language: ContentLanguage;
     readonly versionStatus: VersionStatus;
+    readonly lastModified?: string;
+    readonly lastModifiedByUser?: string;
 }
 
 export interface Field {
