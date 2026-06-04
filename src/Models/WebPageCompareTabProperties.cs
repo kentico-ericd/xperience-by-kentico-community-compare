@@ -12,45 +12,59 @@ namespace XperienceCommunity.Compare.Models;
 public class WebPageCompareTabProperties : WebPageBaseClientProperties
 {
     /// <summary>
-    /// The ID of the web page selected in the administration.
+    /// The source web page's content item ID.
     /// </summary>
-    public int WebPageID { get; set; }
+    public int ContentItemID { get; set; }
 
 
     /// <summary>
-    /// The name of the website channel for the selected web page.
+    /// The source web page's website channel name.
     /// </summary>
     public string? WebsiteChannelName { get; set; }
 
 
     /// <summary>
-    /// The ID of the selected web page's content type class.
+    /// The source web page's content type class ID.
     /// </summary>
     public int ContentTypeClassID { get; set; }
 
 
     /// <summary>
-    /// The name of the language for the selected web page.
+    /// The source web page's content item data.
     /// </summary>
-    public string? SourceLanguageName { get; set; }
-
-
-    /// <summary>
-    /// The version status of the selected web page.
-    /// </summary>
-    public int SourceVersionStatus { get; set; }
+    public BasicContentItem SourceContentItem { get; set; }
 
 
     /// <summary>
     /// A collection of all languages registered in the system.
     /// </summary>
     public IEnumerable<ContentLanguage> Languages { get; set; } = [];
+
+
+    /// <summary>
+    /// A collection of content items available for comparison.
+    /// </summary>
+    public IEnumerable<BasicContentItem> CompareTargets { get; set; } = [];
 }
 
 /// <summary>
 /// Represents a simplified <see cref="ContentLanguageInfo"/> object.
 /// </summary>
+/// <param name="LanguageID">The ID of the language.</param>
 /// <param name="LanguageName">The name of the language.</param>
 /// <param name="LanguageDisplayName">The display name of the language.</param>
 /// <param name="FlagName">The name of the flag associated with the language.</param>
-public readonly record struct ContentLanguage(string LanguageName, string LanguageDisplayName, string FlagName);
+public readonly record struct ContentLanguage(int LanguageID, string LanguageName, string LanguageDisplayName, string FlagName);
+
+/// <summary>
+/// Represents the basic data of a content item.
+/// </summary>
+/// <param name="Language">The language of the content item.</param>
+/// <param name="VersionStatus">The version status of the content item.</param>
+/// <param name="LastModified">The date and time when the content item was last modified.</param>
+/// <param name="LastModifiedByUser">The name of theuser who last modified the content item.</param>
+public readonly record struct BasicContentItem(
+    ContentLanguage Language,
+    VersionStatus VersionStatus,
+    DateTime LastModified,
+    string LastModifiedByUser);

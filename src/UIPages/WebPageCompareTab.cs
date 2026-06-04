@@ -1,9 +1,12 @@
-﻿using CMS.Base;
+﻿using System.Data;
+
+using CMS.Base;
 using CMS.ContentEngine;
 using CMS.ContentEngine.Internal;
 using CMS.Core;
 using CMS.DataEngine;
 using CMS.Helpers;
+using CMS.Membership;
 using CMS.Websites;
 using CMS.Websites.Internal;
 
@@ -108,8 +111,6 @@ public class WebPageCompareTab(
     private async Task SetProperties(WebPageCompareTabProperties properties)
     {
         properties.PreventRefetch = true;
-        properties.WebPageID = WebPageIdentifier.WebPageItemID;
-        properties.SourceLanguageName = WebPageIdentifier.LanguageName;
 
         // Get website channel
         int channelId = (await websiteChannelInfoProvider.GetAsync(ApplicationIdentifier.WebsiteChannelID))?.WebsiteChannelChannelID
@@ -118,25 +119,84 @@ public class WebPageCompareTab(
             ?? throw new InvalidOperationException($"Channel '({channelId})' not found.");
 
         // Get languages
-        var languages = await contentLanguageInfoProvider.Get().GetEnumerableTypedResultAsync();
-        var webPageLanguage = languages.FirstOrDefault(l =>
-            l.ContentLanguageName.Equals(WebPageIdentifier.LanguageName, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException($"Language '({WebPageIdentifier.LanguageName})' not found.");
-        properties.Languages = languages.Select(l =>
-            new ContentLanguage(l.ContentLanguageName, l.ContentLanguageDisplayName, l.ContentLanguageFlagIconName));
+        properties.Languages = (await contentLanguageInfoProvider.Get()
+            .GetEnumerableTypedResultAsync())
+            .Select(l =>
+                new ContentLanguage(
+                    l.ContentLanguageID,
+                    l.ContentLanguageName,
+                    l.ContentLanguageDisplayName,
+                    l.ContentLanguageFlagIconName));
+        var sourceLanguage = properties.Languages.FirstOrDefault(l =>
+            l.LanguageName.Equals(WebPageIdentifier.LanguageName, StringComparison.OrdinalIgnoreCase));
 
         // Get basic web page data
         var dataContainer = await GetWebPageData(
             WebPageIdentifier.WebPageItemID,
             ApplicationIdentifier.WebsiteChannelID,
-            webPageLanguage.ContentLanguageID) ??
+            sourceLanguage.LanguageID) ??
             throw new InvalidOperationException($"Failed to retrieve metadata info for web page {ApplicationIdentifier.WebsiteChannelID}.");
-        properties.SourceVersionStatus = ValidationHelper.GetInteger(
+        int sourceVersionStatus = ValidationHelper.GetInteger(
             dataContainer.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataLatestVersionStatus)),
             0);
         properties.ContentTypeClassID = ValidationHelper.GetInteger(
             dataContainer.GetValue(nameof(ContentItemInfo.ContentItemContentTypeID)),
             0);
+        properties.ContentItemID = ValidationHelper.GetInteger(dataContainer.GetValue(nameof(ContentItemInfo.ContentItemID)), 0);
+
+        // Get all existing versions of content item
+        var contentItemVariants = await GetContentItemVariants(properties.ContentItemID, properties.Languages);
+        properties.SourceContentItem = contentItemVariants.Find(c =>
+            c.Language.LanguageName == sourceLanguage.LanguageName && (int)c.VersionStatus == sourceVersionStatus);
+        // Remove source version from compare targets
+        contentItemVariants.Remove(properties.SourceContentItem);
+        properties.CompareTargets = contentItemVariants;
+
+    }
+
+
+    private static async Task<List<BasicContentItem>> GetContentItemVariants(int contentItemId, IEnumerable<ContentLanguage> languages)
+    {
+        var query = new DataQuery()
+            .From(new QuerySource(new QuerySourceTable(ContentItemCommonDataInfo.TYPEINFO.ClassStructureInfo.TableName)))
+            .Source(s => s
+                .Join(
+                    new QuerySourceTable(ContentItemLanguageMetadataInfo.TYPEINFO.ClassStructureInfo.TableName),
+                    new WhereCondition(
+                        $"{nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentItemID)} = {nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentItemID)}" +
+                        $" AND {nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentLanguageID)} = {nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentLanguageID)}"
+                    )
+                )
+                .LeftJoin(
+                    new QuerySourceTable(UserInfo.TYPEINFO.ClassStructureInfo.TableName),
+                    nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataModifiedByUserID),
+                    nameof(UserInfo.UserID)
+                )
+            )
+            .Columns(
+                nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentLanguageID),
+                nameof(ContentItemCommonDataInfo.ContentItemCommonDataVersionStatus),
+                nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataModifiedWhen),
+                nameof(UserInfo.UserName)
+            )
+            .WhereEquals(nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentItemID), contentItemId);
+
+        return (await query.GetDataContainerResultAsync())
+                    .Select(c =>
+                    {
+                        int languageId = ValidationHelper.GetInteger(
+                            c.GetValue(nameof(ContentItemCommonDataInfo.ContentItemCommonDataContentLanguageID)), 0);
+                        var matchingLanguage = languages.FirstOrDefault(l =>
+                            l.LanguageID == languageId);
+                        int versionStatus = ValidationHelper.GetInteger(
+                            c.GetValue(nameof(ContentItemCommonDataInfo.ContentItemCommonDataVersionStatus)), 0);
+                        var lastModified = ValidationHelper.GetDateTime(
+                            c.GetValue(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataModifiedWhen)), DateTime.MinValue);
+                        string lastModifiedByUser = ValidationHelper.GetString(c.GetValue(nameof(UserInfo.UserName)), string.Empty);
+
+                        return new BasicContentItem(matchingLanguage, (VersionStatus)versionStatus, lastModified, lastModifiedByUser);
+                    })
+                    .ToList();
     }
 
 
@@ -161,7 +221,8 @@ public class WebPageCompareTab(
             .WhereEquals(nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataContentLanguageID), languageId)
             .Columns(
                 nameof(ContentItemLanguageMetadataInfo.ContentItemLanguageMetadataLatestVersionStatus),
-                nameof(ContentItemInfo.ContentItemContentTypeID));
+                nameof(ContentItemInfo.ContentItemContentTypeID),
+                nameof(ContentItemInfo.ContentItemID));
 
         return progressiveCache.LoadAsync(
             async (cs) => (await query.GetDataContainerResultAsync()).FirstOrDefault(),

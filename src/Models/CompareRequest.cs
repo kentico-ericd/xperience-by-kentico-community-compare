@@ -1,6 +1,4 @@
-﻿using CMS.ContentEngine;
-
-namespace XperienceCommunity.Compare.Models;
+﻿namespace XperienceCommunity.Compare.Models;
 
 /// <summary>
 /// Model containing the necessary information to compare two versions of webpage content.
@@ -8,43 +6,31 @@ namespace XperienceCommunity.Compare.Models;
 public class CompareRequest
 {
     /// <summary>
-    /// The ID of the web page selected in the administration.
+    /// The ID of the content item selected in the administration.
     /// </summary>
-    public int WebPageID { get; set; }
+    public int ContentItemID { get; set; }
 
 
     /// <summary>
-    /// The name of the website channel for the selected web page.
+    /// The name of the website channel for the source web page.
     /// </summary>
     public string? WebsiteChannelName { get; set; }
 
 
     /// <summary>
-    /// The ID of the selected web page's content type class.
+    /// The ID of the source web page's content type class.
     /// </summary>
     public int ContentTypeClassID { get; set; }
 
 
     /// <summary>
-    /// The name of the language for the selected web page.
+    /// The source content item.
     /// </summary>
-    public string? SourceLanguageName { get; set; }
+    public BasicContentItem SourceContentItem { get; set; }
 
 
     /// <summary>
-    /// The name of the language for the target web page.
+    /// The target content item.
     /// </summary>
-    public string? TargetLanguageName { get; set; }
-
-
-    /// <summary>
-    /// The version status of the selected web page.
-    /// </summary>
-    public VersionStatus SourceVersionStatus { get; set; }
-
-
-    /// <summary>
-    /// The version status of the target web page.
-    /// </summary>
-    public VersionStatus TargetVersionStatus { get; set; }
+    public BasicContentItem TargetContentItem { get; set; }
 }

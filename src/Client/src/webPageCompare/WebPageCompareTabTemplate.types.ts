@@ -1,22 +1,20 @@
 import { IconName } from "@kentico/xperience-admin-components";
 
 export interface WebPageCompareTabProperties {
-    readonly webPageID: number;
+    readonly contentItemID: number;
     readonly websiteChannelName: string;
     readonly contentTypeClassID: number;
-    readonly sourceLanguageName: string;
-    readonly sourceVersionStatus: VersionStatus;
+    readonly sourceContentItem: BasicContentItem;
     readonly languages: ContentLanguage[];
+    readonly compareTargets: BasicContentItem[];
 }
 
 export interface CompareRequest {
-    webPageID: number;
+    contentItemID: number;
     websiteChannelName: string;
     contentTypeClassID: number;
-    sourceLanguageName: string;
-    targetLanguageName?: string;
-    sourceVersionStatus: VersionStatus;
-    targetVersionStatus?: VersionStatus;
+    sourceContentItem: BasicContentItem;
+    targetContentItem?: BasicContentItem;
 }
 
 export interface ComparableWebPageData {
@@ -26,11 +24,18 @@ export interface ComparableWebPageData {
     readonly targetPageBuilderWidgets?: string;
 }
 
-
 export interface ContentLanguage {
+    readonly languageID: number;
     readonly languageName: string;
     readonly languageDisplayName: string;
     readonly flagName: IconName;
+}
+
+export interface BasicContentItem {
+    readonly language: ContentLanguage;
+    readonly versionStatus: VersionStatus;
+    readonly lastModified?: string;
+    readonly lastModifiedByUser?: string;
 }
 
 export interface Field {

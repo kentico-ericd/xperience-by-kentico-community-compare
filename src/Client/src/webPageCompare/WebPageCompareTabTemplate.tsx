@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { RefObject, useRef, useState } from "react";
 import {
     Box,
     Button,
@@ -7,33 +7,32 @@ import {
     Checkbox,
     Cols,
     Column,
+    DropDownActionMenu,
     Headline,
     HeadlineSize,
+    Icon,
+    Inline,
     LayoutAlignment,
     MenuItem,
+    MenuItemWithSubmenu,
     Row,
-    Select,
+    SelectMenu,
     Spacing,
     Stack
 } from "@kentico/xperience-admin-components";
 import { usePageCommand } from "@kentico/xperience-admin-base";
-import { CompareRequest, ComparableWebPageData, WebPageCompareTabProperties, VersionStatus } from "./WebPageCompareTabTemplate.types";
-import ReactDiffViewer, { ReactDiffViewerStylesOverride } from "react-diff-viewer";
+import {
+    CompareRequest,
+    ComparableWebPageData,
+    WebPageCompareTabProperties,
+    VersionStatus,
+    ContentLanguage
+} from "./WebPageCompareTabTemplate.types";
+import { WebPageCompareComponent } from "./webPageCompareComponent";
 
 const Commands = {
     /** Command to compare the selected web pages. */
     Compare: "Compare",
-};
-
-enum RenderState {
-    /** The comparison has not been run yet. */
-    NotRun,
-    /** An error occurred during the comparison. */
-    Error,
-    /** No differences were found between the source and target pages. */
-    NoDifferences,
-    /** Differences were found between the source and target pages. */
-    Differences
 };
 
 /**
@@ -41,22 +40,21 @@ enum RenderState {
  */
 export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) => {
     const compareRequest: CompareRequest = {
-        webPageID: props.webPageID,
+        contentItemID: props.contentItemID,
         websiteChannelName: props.websiteChannelName,
         contentTypeClassID: props.contentTypeClassID,
-        sourceLanguageName: props.sourceLanguageName,
-        sourceVersionStatus: props.sourceVersionStatus
+        sourceContentItem: props.sourceContentItem
     };
     let compareButtonOriginalContent: string;
     const compareButtonRef = useRef<HTMLButtonElement>(null);
     const [comparableData, setComparableData] = useState<ComparableWebPageData>();
-    const [targetLanguageName, setTargetLanguageName] = useState(props.sourceLanguageName);
+    const [targetLanguage, setTargetLanguage] = useState<ContentLanguage>();
     const [targetVersionStatus, setTargetVersionStatus] = useState<number | undefined>();
-    const [enableDiffs, setDiffsEnabled] = useState(false);
+    const [showDiffs, setShowDiffs] = useState(false);
     const { execute: compare } = usePageCommand<ComparableWebPageData, CompareRequest>(Commands.Compare, {
         before: () => {
             // Validate selections, cancel if invalid
-            if (!targetLanguageName || !targetVersionStatus) {
+            if (!targetLanguage || !targetVersionStatus) {
                 setComparableData({ errorMessage: 'Target page selection incomplete.', fields: [] })
 
                 return false;
@@ -67,8 +65,8 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                 compareButtonOriginalContent = compareButtonRef.current.innerHTML;
                 compareButtonRef.current.innerHTML = "Loading...";
             }
-            compareRequest.targetLanguageName = targetLanguageName;
-            compareRequest.targetVersionStatus = targetVersionStatus;
+
+            compareRequest.targetContentItem = getTargetContentItem();
         },
         after: data => {
             if (compareButtonRef.current) {
@@ -81,137 +79,66 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
         data: compareRequest
     });
 
-    const diffViewerStyles: ReactDiffViewerStylesOverride = {
-        line: {
-            fontSize: '12px'
-        },
-        diffContainer: {
-            tableLayout: 'fixed',
-            wordWrap: 'break-word'
-        },
-        variables: {
-            light: {
-                addedBackground: '#fafbfc',
-                removedBackground: '#fafbfc',
-            }
-        },
-    };
+    /**
+     * Returns true if any compare target exists for the given version statuses, within the provided language.
+     */
+    const variantExistsInLanguageAndVersionStatus = (languageName: string, versionStatuses: VersionStatus[]) =>
+        props.compareTargets.some(target => versionStatuses.includes(target.versionStatus) &&
+            target.language.languageName == languageName);
 
-    const getSourcePageLanguageDisplayName = () => props.languages
-        .find(l => l.languageName === props.sourceLanguageName)?.languageDisplayName ?? '(Current language)';
-
-    const getSourcePageVersionStatusName = () => {
-        switch (props.sourceVersionStatus) {
+    const getVersionStatusName = (versionStatus: number) => {
+        switch (versionStatus) {
             case VersionStatus.InitialDraft:
             case VersionStatus.Draft: return 'Draft';
             case VersionStatus.Published: return 'Published';
+            default: return '(Current version)'
         };
+    };
 
-        return '(Current version)';
+    const getTimestamp = (dateTime?: string) => {
+        if (!dateTime) {
+            return 'N/A';
+        }
+
+        return new Date(Date.parse(dateTime)).toLocaleString();
     };
 
     /**
-     * Determines what to render based on the current state of comparableData.
+     * Gets the data of the target content item, or undefined if the target language or version status has not been selected.
      */
-    const getRenderState = (): RenderState => {
-        if (!comparableData) {
-            return RenderState.NotRun;
+    const getTargetContentItem = () => {
+        if (!targetLanguage || !targetVersionStatus) {
+            return undefined;
         }
 
-        if (comparableData.errorMessage) {
-            return RenderState.Error;
-        }
-
-        if ((comparableData.fields.length > 0 ||
-            (comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets)))
-        {
-            return RenderState.Differences;
-        }
-
-        return RenderState.NoDifferences;
+        return props.compareTargets.find(target =>
+            target.language.languageName === targetLanguage.languageName &&
+            target.versionStatus === targetVersionStatus
+        );
     };
-
-    const renderNotRun = () => <Row alignX={LayoutAlignment.Center}>
-        {/* Currently there is no message displayed when tool is not run */}
-    </Row>
-
-    /**
-     * Renders a friendly message when no differences are found between the source and target pages.
-     */
-    const renderNoDifferences = () => <Row alignX={LayoutAlignment.Center}>
-        <Headline size={HeadlineSize.M}>No differences found</Headline>
-    </Row>
-
-    /**
-     * Renders an error message when an exception occurs during comparison.
-     */
-    const renderError = () => <Row alignX={LayoutAlignment.Center}>
-        <Stack align={LayoutAlignment.Center}>
-            <Headline size={HeadlineSize.M}>Something went wrong</Headline>
-            <Headline size={HeadlineSize.S}>Error "{comparableData?.errorMessage}" occurred.
-                The Event Log may contain more details.</Headline>
-        </Stack>
-    </Row>
-
-    /**
-     * Renders the differences between the source and target pages. This includes field differences as well as page builder widget
-     * differences (if available).
-     */
-    const renderDifferences = () => <>
-        {comparableData && comparableData.fields.length > 0 && comparableData.fields.map(f =>
-            <Column cols={Cols.Col12}>
-                <Box spacing={Spacing.L}>
-                    <Row alignX={LayoutAlignment.Center}>
-                        <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
-                        <ReactDiffViewer
-                            splitView={true}
-                            hideLineNumbers={true}
-                            disableWordDiff={!enableDiffs}
-                            extraLinesSurroundingDiff={0}
-                            styles={diffViewerStyles}
-                            oldValue={f.sourceValue}
-                            newValue={f.targetValue} />
-                    </Row>
-                </Box>
-            </Column>
-        )}
-        {comparableData && comparableData.sourcePageBuilderWidgets && comparableData.targetPageBuilderWidgets &&
-            <Column cols={Cols.Col12}>
-                <Box spacing={Spacing.L}>
-                    <Row alignX={LayoutAlignment.Center}>
-                        <Headline size={HeadlineSize.M}>Widgets</Headline>
-                        <ReactDiffViewer
-                            splitView={true}
-                            hideLineNumbers={true}
-                            disableWordDiff={!enableDiffs}
-                            extraLinesSurroundingDiff={0}
-                            styles={diffViewerStyles}
-                            oldValue={comparableData.sourcePageBuilderWidgets}
-                            newValue={comparableData.targetPageBuilderWidgets} />
-                    </Row>
-                </Box>
-            </Column>
-        }
-    </>
-
 
     return (
         <Stack spacing={Spacing.L}>
             <Row>
+                {/* Left column- source page */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
-                        <Headline size={HeadlineSize.L}>This page</Headline>
-                        <Row>
-                            <Select disabled={true} label='Language'>
-                                <MenuItem primaryLabel={getSourcePageLanguageDisplayName()} selected />
-                            </Select>
-                            <Select disabled={true} label='Version'>
-                                <MenuItem primaryLabel={getSourcePageVersionStatusName()} selected />
-                            </Select>
-                        </Row>
+                        <Stack spacing={Spacing.S}>
+                            <Headline size={HeadlineSize.M}>This page</Headline>
+                            <div style={{ color: 'black' }}>
+                                <Inline>
+                                    <Icon name={props.sourceContentItem.language.flagName} />
+                                    &nbsp;{props.sourceContentItem.language.languageDisplayName}
+                                    &nbsp;{getVersionStatusName(props.sourceContentItem.versionStatus)}
+                                </Inline>
+                            </div>
+                            <div style={{ color: 'black' }}>Last modified: {getTimestamp(props.sourceContentItem.lastModified)}</div>
+                            <div style={{ color: 'black' }}>Modified by: {props.sourceContentItem.lastModifiedByUser ?? 'N/A'}</div>
+                        </Stack>
                     </Box>
                 </Column>
 
+                {/* Middle column- actions */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
                         <Row alignX={LayoutAlignment.Center}>
@@ -224,64 +151,88 @@ export const WebPageCompareTabTemplate = (props: WebPageCompareTabProperties) =>
                                     onClick={() => compare()} icon='xp-doc-copy' />
                                 <Checkbox
                                     label='Show diffs'
-                                    checked={enableDiffs}
-                                    onChange={(_, checked) => setDiffsEnabled(checked)} />
+                                    checked={showDiffs}
+                                    onChange={(_, checked) => setShowDiffs(checked)} />
                             </Stack>
-                        
                         </Row>
                     </Box>
                 </Column>
 
+                {/* Right column- target page */}
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
-                        <Row alignX={LayoutAlignment.End}>
-                            <Headline size={HeadlineSize.L}>Target page</Headline>
-                        </Row>
-                        <Row alignX={LayoutAlignment.End}>
-                            <Select
-                                label='Language'
-                                value={targetLanguageName}
-                                onChange={(e) => setTargetLanguageName(e ?? '')}>
-                                {
-                                    props.languages.map(l =>
-                                        <MenuItem
-                                            primaryLabel={l.languageDisplayName}
-                                            value={l.languageName} />
-                                    )
+                        <Stack align={LayoutAlignment.End} spacing={Spacing.S}>
+                            <Headline size={HeadlineSize.M}>Target page</Headline>
+                            {(() => {
+                                const target = getTargetContentItem();
+                                if (!target) {
+                                    return <div style={{ color: 'black' }}>No target page selected</div>;
                                 }
-                            </Select>
-                            <Select
-                                label='Version'
-                                placeholder='(Select version)'
-                                onChange={(e) => setTargetVersionStatus(Number.parseInt(e ?? ''))}>
-                                <MenuItem
-                                    primaryLabel='Draft'
-                                    value={VersionStatus.Draft.toString()}
-                                    disabled={targetLanguageName === props.sourceLanguageName &&
-                                        props.sourceVersionStatus === VersionStatus.Draft} />
-                                    <MenuItem
-                                    primaryLabel='Published'
-                                    value={VersionStatus.Published.toString()}
-                                    disabled={props.sourceVersionStatus == VersionStatus.InitialDraft ||
-                                        (targetLanguageName === props.sourceLanguageName &&
-                                        props.sourceVersionStatus === VersionStatus.Published)} />
-                            </Select>
-                        </Row>
+
+                                return (
+                                    <>
+                                        <div style={{ color: 'black' }}>
+                                            <Inline>
+                                                <Icon name={target.language.flagName} />
+                                                &nbsp;{target.language.languageDisplayName}
+                                                &nbsp;{getVersionStatusName(target.versionStatus)}
+                                            </Inline>
+                                        </div>
+                                        <div style={{ color: 'black' }}>Last modified: {getTimestamp(target.lastModified)}</div>
+                                        <div style={{ color: 'black' }}>Modified by: {target.lastModifiedByUser ?? 'N/A'}</div>
+                                    </>
+                                );
+                            })()}
+
+                            <DropDownActionMenu
+                                renderTrigger={(ref, onTriggerClick) => (
+                                    <Button
+                                        size={ButtonSize.XS}
+                                        color={ButtonColor.Secondary}
+                                        buttonRef={ref as RefObject<HTMLButtonElement>}
+                                        onClick={() => onTriggerClick()}
+                                        label='Select' />
+                                )}>
+                                {props.languages.map((language) => (
+                                    <MenuItemWithSubmenu
+                                        primaryLabel={language.languageDisplayName}
+                                        disabled={!variantExistsInLanguageAndVersionStatus(
+                                            language.languageName, [VersionStatus.InitialDraft, VersionStatus.Draft, VersionStatus.Published])}
+                                        leadingElement={{
+                                            type: 'icon',
+                                            element: <Icon name={language.flagName} />
+                                        }}
+                                        submenuContent={
+                                            <SelectMenu>
+                                                <MenuItem
+                                                    primaryLabel='Draft'
+                                                    value={VersionStatus.Draft.toString()}
+                                                    disabled={!variantExistsInLanguageAndVersionStatus(
+                                                        language.languageName, [VersionStatus.InitialDraft, VersionStatus.Draft])}
+                                                    onClick={() => {
+                                                        setTargetLanguage(language);
+                                                        setTargetVersionStatus(VersionStatus.Draft);
+                                                    }} />
+                                                <MenuItem
+                                                    primaryLabel='Published'
+                                                    value={VersionStatus.Published.toString()}
+                                                    disabled={!variantExistsInLanguageAndVersionStatus(
+                                                        language.languageName, [VersionStatus.Published])}
+                                                    onClick={() => {
+                                                        setTargetLanguage(language);
+                                                        setTargetVersionStatus(VersionStatus.Published);
+                                                    }} />
+                                            </SelectMenu>
+                                        }
+                                    />
+                                ))}
+                            </DropDownActionMenu>
+                        </Stack>
                     </Box>
                 </Column>
             </Row>
 
-            {(() => {
-                const state = getRenderState();
-                switch (state) {
-                    case RenderState.Error: return renderError();
-                    case RenderState.NoDifferences: return renderNoDifferences();
-                    case RenderState.Differences: return renderDifferences();
-                    case RenderState.NotRun:
-                    default:
-                        return renderNotRun();
-                }
-            })()}
+            <WebPageCompareComponent comparableWebPageData={comparableData} showDiffs={showDiffs} />
 
         </Stack>
     );
