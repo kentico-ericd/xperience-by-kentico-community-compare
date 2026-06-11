@@ -5,8 +5,6 @@ using CMS.FormEngine;
 using CMS.Helpers;
 using CMS.Websites;
 
-using Kentico.Content.Web.Mvc;
-
 using Newtonsoft.Json;
 
 using XperienceCommunity.Compare.Models;
@@ -17,115 +15,126 @@ namespace XperienceCommunity.Compare.Services;
 /// Default implementation of <see cref="IComparableDataRetriever"/>.
 /// </summary>
 public class ComparableDataRetriever(
-    IContentRetriever contentRetriever,
     IProgressiveCache progressiveCache,
+    IContentQueryExecutor contentQueryExecutor,
     ICacheDependencyBuilderFactory dependencyBuilderFactory) : IComparableDataRetriever
 {
-    public async Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest, CancellationToken ct)
+    public async Task<ComparableContentItemData> GetContentItemCompareResultAsync(ContentItemCompareRequest compareRequest, CancellationToken ct)
     {
-        ArgumentException.ThrowIfNullOrEmpty(compareRequest.WebsiteChannelName);
+        string contentTypeClassName = DataClassInfoProvider.GetDataClassInfo(compareRequest.ContentTypeClassID)?.ClassName
+            ?? throw new InvalidOperationException($"Failed to retrieve data class for ID {compareRequest.ContentTypeClassID}.");
+        var fieldsForCompare = GetFieldsForCompare(contentTypeClassName);
 
-        var fieldsForCompare = GetFieldsForCompare(compareRequest.ContentTypeClassID);
-        var targetPageData = await GetWebPageData(
+        var targetItemData = await GetContentItemData(
             false,
             compareRequest,
             fieldsForCompare,
-            ct) ?? throw new InvalidOperationException("Failed to retrieve values for target page.");
-        var sourcePageData = await GetWebPageData(
+            contentTypeClassName,
+            ct) ?? throw new InvalidOperationException("Failed to retrieve values for target item.");
+        var sourceItemData = await GetContentItemData(
             true,
             compareRequest,
             fieldsForCompare,
-            ct) ?? throw new InvalidOperationException("Failed to retrieve values for source page.");
+            contentTypeClassName,
+            ct) ?? throw new InvalidOperationException("Failed to retrieve values for source item.");
 
-        return BuildComparableWebPageData(sourcePageData, targetPageData, fieldsForCompare);
+        return BuildComparableContentItemData(sourceItemData, targetItemData, fieldsForCompare);
     }
 
 
     /// <summary>
-    /// Creates a ComparableWebPageData instance representing differences between two PageData objects based on specified fields.
+    /// Creates a ComparableContentItemData instance representing differences between two ItemData objects based on specified fields.
     /// </summary>
-    /// <param name="sourcePageData">The source PageData to compare.</param>
-    /// <param name="targetPageData">The target PageData to compare.</param>
+    /// <param name="sourceItemData">The source ItemData to compare.</param>
+    /// <param name="targetItemData">The target ItemData to compare.</param>
     /// <param name="fieldsForCompare">The collection of FormFieldInfo specifying which fields to compare.</param>
-    /// <returns>A ComparableWebPageData object containing only differing fields and page builder widgets.</returns>
-    private static ComparableWebPageData BuildComparableWebPageData(
-        PageData sourcePageData,
-        PageData targetPageData,
+    /// <returns>A ComparableContentItemData object containing only differing fields and page builder widgets.</returns>
+    private static ComparableContentItemData BuildComparableContentItemData(
+        ItemData sourceItemData,
+        ItemData targetItemData,
         IEnumerable<FormFieldInfo> fieldsForCompare)
     {
-        var fields = new List<Field>();
+        var fields = new List<ComparableField>();
         foreach (string field in fieldsForCompare.Select(f => f.Name))
         {
-            bool sourceHasValue = sourcePageData.FieldValues.TryGetValue(field, out string? sourceValue);
-            bool targetHasValue = targetPageData.FieldValues.TryGetValue(field, out string? targetValue);
+            bool sourceHasValue = sourceItemData.FieldValues.TryGetValue(field, out string? sourceValue);
+            bool targetHasValue = targetItemData.FieldValues.TryGetValue(field, out string? targetValue);
             if ((!sourceHasValue && !targetHasValue) ||
                 (sourceValue?.Equals(targetValue) ?? false)) // Skip exact match
             {
                 continue;
             }
 
-            fields.Add(new(field, sourceValue ?? string.Empty, targetValue ?? string.Empty));
+            fields.Add(new ComparableField
+            {
+                FieldName = field,
+                SourceValue = sourceValue ?? string.Empty,
+                TargetValue = targetValue ?? string.Empty
+            });
         }
-        var comparableWebPageData = new ComparableWebPageData
+        var comparableContentItemData = new ComparableContentItemData
         {
             Fields = fields
         };
 
         // If page builder widgets are an exact match, set them to null. They will be ignored in the template
-        if (sourcePageData.PageBuilderWidgets.Equals(targetPageData.PageBuilderWidgets))
+        if (sourceItemData.PageBuilderWidgets.Equals(targetItemData.PageBuilderWidgets))
         {
-            comparableWebPageData.SourcePageBuilderWidgets = null;
-            comparableWebPageData.TargetPageBuilderWidgets = null;
+            comparableContentItemData.SourcePageBuilderWidgets = null;
+            comparableContentItemData.TargetPageBuilderWidgets = null;
         }
         else
         {
-            comparableWebPageData.SourcePageBuilderWidgets = sourcePageData.PageBuilderWidgets;
-            comparableWebPageData.TargetPageBuilderWidgets = targetPageData.PageBuilderWidgets;
+            comparableContentItemData.SourcePageBuilderWidgets = sourceItemData.PageBuilderWidgets;
+            comparableContentItemData.TargetPageBuilderWidgets = targetItemData.PageBuilderWidgets;
         }
 
-        return comparableWebPageData;
+        return comparableContentItemData;
     }
 
 
     /// <summary>
-    /// Retrieves web page data for a specified content item and language context.
+    /// Retrieves content item data for a specified content item and language context.
     /// </summary>
-    /// <param name="isSourcePage">Indicates whether to use the source or target web page version.</param>
+    /// <param name="isSourceItem">Indicates whether to use the source or target content item version.</param>
     /// <param name="compareRequest">The compare request containing language and version information.</param>
-    /// <param name="fields">The collection of form field metadata to bind to the page data.</param>
+    /// <param name="fields">The collection of form field metadata to bind to the content item data.</param>
+    /// <param name="contentTypeClassName">The class name of the content type to retrieve.</param>
     /// <param name="ct">A cancellation token to observe while waiting for the task to complete.</param>
-    private async Task<PageData?> GetWebPageData(
-        bool isSourcePage,
-        CompareRequest compareRequest,
+    private async Task<ItemData?> GetContentItemData(
+        bool isSourceItem,
+        ContentItemCompareRequest compareRequest,
         IEnumerable<FormFieldInfo> fields,
+        string contentTypeClassName,
         CancellationToken ct)
     {
-        var language = isSourcePage ? compareRequest.SourceContentItem.Language : compareRequest.TargetContentItem.Language;
-        var versionStatus = isSourcePage ? compareRequest.SourceContentItem.VersionStatus : compareRequest.TargetContentItem.VersionStatus;
+        var language = isSourceItem ? compareRequest.SourceContentItem?.Language : compareRequest.TargetContentItem?.Language;
+        var versionStatus = isSourceItem ? compareRequest.SourceContentItem?.VersionStatus : compareRequest.TargetContentItem?.VersionStatus;
         bool isPreview = versionStatus is VersionStatus.Draft or VersionStatus.InitialDraft;
-        var parameters = new RetrieveAllPagesParameters
-        {
-            ChannelName = compareRequest.WebsiteChannelName,
-            IsForPreview = isPreview,
-            LanguageName = language.LanguageName,
-            IncludeSecuredItems = true,
-            UseLanguageFallbacks = false
-        };
-        var result = await contentRetriever.RetrieveAllPages<PageData?>(
-            parameters,
-            q => q.Where(w => w.WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), compareRequest.ContentItemID)),
-            RetrievalCacheSettings.CacheDisabled,
-            (container, mappedResult) => PageDataBinder(container, fields, language, ct),
+
+        var builder = new ContentItemQueryBuilder()
+            .ForContentType(contentTypeClassName)
+            .InLanguage(language?.LanguageName)
+            .Parameters(p => p.Where(w => w
+                .WhereEquals(nameof(IWebPageFieldsSource.SystemFields.ContentItemID), compareRequest.ContentItemID)));
+        var result = await contentQueryExecutor.GetResult(
+            builder,
+            container => ContentItemDataBinder(container, fields, language, ct),
+            new()
+            {
+                ForPreview = isPreview,
+                IncludeSecuredItems = true
+            },
             ct);
 
         return result.FirstOrDefault();
     }
 
 
-    private async Task<PageData?> PageDataBinder(
+    private async Task<ItemData?> ContentItemDataBinder(
         IContentQueryDataContainer container,
         IEnumerable<FormFieldInfo> fields,
-        ContentLanguage language,
+        ContentLanguage? language,
         CancellationToken ct)
     {
         // Build field values
@@ -144,14 +153,14 @@ public class ComparableDataRetriever(
         string pageBuilderWidgets =
             container.GetValue<string>(nameof(ContentItemCommonDataInfo.ContentItemCommonDataVisualBuilderWidgets)) ?? string.Empty;
 
-        return new PageData(fieldValues, pageBuilderWidgets);
+        return new ItemData(fieldValues, pageBuilderWidgets);
     }
 
 
     private async Task<string?> GetStringRepresentation(
         FormFieldInfo field,
         object value,
-        ContentLanguage language,
+        ContentLanguage? language,
         CancellationToken ct)
     {
         string? stringRepresentation = ValidationHelper.GetString(value, null);
@@ -168,7 +177,7 @@ public class ComparableDataRetriever(
             List<string> referenceNames = [];
             foreach (var reference in references.Select(r => r.Identifier))
             {
-                string name = await GetContentItemDisplayName(reference, language.LanguageID, ct) ?? "[Not translated]";
+                string name = await GetContentItemDisplayName(reference, language?.LanguageID, ct) ?? "[Not translated]";
                 referenceNames.Add($"{name} ({reference})");
             }
 
@@ -179,7 +188,7 @@ public class ComparableDataRetriever(
     }
 
 
-    private async Task<string?> GetContentItemDisplayName(Guid contentItemGuid, int languageId, CancellationToken ct)
+    private async Task<string?> GetContentItemDisplayName(Guid contentItemGuid, int? languageId, CancellationToken ct)
     {
         var query = new DataQuery()
             .From(new QuerySource(new QuerySourceTable(ContentItemLanguageMetadataInfo.TYPEINFO.ClassStructureInfo.TableName)))
@@ -213,11 +222,8 @@ public class ComparableDataRetriever(
     }
 
 
-    private static List<FormFieldInfo> GetFieldsForCompare(int classId)
+    private static List<FormFieldInfo> GetFieldsForCompare(string contentTypeName)
     {
-        string contentTypeName = DataClassInfoProvider.GetDataClassInfo(classId)?.ClassName
-            ?? throw new InvalidOperationException($"Failed to retrieve data class for ID {classId}.");
-
         string prefixedContentTypeName = ReusableFieldSchemaUtils.GetPrefixedContentTypeName(contentTypeName);
         var formInfoWithSchema = FormHelper.GetFormInfo(prefixedContentTypeName, false);
 
@@ -225,4 +231,4 @@ public class ComparableDataRetriever(
     }
 }
 
-public readonly record struct PageData(Dictionary<string, string> FieldValues, string PageBuilderWidgets);
+public readonly record struct ItemData(Dictionary<string, string> FieldValues, string PageBuilderWidgets);

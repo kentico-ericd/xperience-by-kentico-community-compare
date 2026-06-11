@@ -1,34 +1,17 @@
 import { IconName } from "@kentico/xperience-admin-components";
 
-export interface WebPageCompareTabProperties {
-    readonly contentItemID: number;
-    readonly websiteChannelName: string;
-    readonly contentTypeClassID: number;
-    readonly sourceContentItem: BasicContentItem;
-    readonly languages: ContentLanguage[];
-    readonly compareTargets: BasicContentItem[];
-}
-
-export interface CompareRequest {
+export interface ContentItemCompareRequest {
     contentItemID: number;
-    websiteChannelName: string;
     contentTypeClassID: number;
     sourceContentItem: BasicContentItem;
     targetContentItem?: BasicContentItem;
 }
 
-export interface ComparableWebPageData {
+export interface ComparableContentItemData {
     readonly errorMessage?: string;
-    readonly fields: Field[];
+    readonly fields: ComparableField[];
     readonly sourcePageBuilderWidgets?: string;
     readonly targetPageBuilderWidgets?: string;
-}
-
-export interface ContentLanguage {
-    readonly languageID: number;
-    readonly languageName: string;
-    readonly languageDisplayName: string;
-    readonly flagName: IconName;
 }
 
 export interface BasicContentItem {
@@ -38,7 +21,14 @@ export interface BasicContentItem {
     readonly lastModifiedByUser?: string;
 }
 
-export interface Field {
+export interface ContentLanguage {
+    readonly languageID: number;
+    readonly languageName: string;
+    readonly languageDisplayName: string;
+    readonly flagName: IconName;
+}
+
+export interface ComparableField {
     readonly fieldName: string;
     readonly sourceValue: string;
     readonly targetValue: string;

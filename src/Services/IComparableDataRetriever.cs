@@ -8,9 +8,9 @@ namespace XperienceCommunity.Compare.Services;
 public interface IComparableDataRetriever
 {
     /// <summary>
-    /// Compares web pages based on the specified request and returns the comparison result.
+    /// Compares content items based on the specified request and returns the comparison result.
     /// </summary>
-    /// <param name="compareRequest">The request containing parameters for the web page comparison.</param>
+    /// <param name="compareRequest">The request containing parameters for the content item comparison.</param>
     /// <param name="ct">A cancellation token to observe while waiting for the task to complete.</param>
-    public Task<ComparableWebPageData> GetWebPageCompareResult(CompareRequest compareRequest, CancellationToken ct);
+    public Task<ComparableContentItemData> GetContentItemCompareResultAsync(ContentItemCompareRequest compareRequest, CancellationToken ct);
 }
