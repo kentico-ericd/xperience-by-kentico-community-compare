@@ -1,1 +1,1 @@
-export * from './webPageCompare/WebPageCompareTabTemplate';
+export * from './templates/ContentItemCompareTabTemplate';

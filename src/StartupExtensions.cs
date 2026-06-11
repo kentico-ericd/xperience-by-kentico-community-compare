@@ -14,6 +14,7 @@ public static class StartupExtensions
     /// </summary>
     public static IServiceCollection AddXperienceCompare(this IServiceCollection services)
     {
+        services.AddSingleton<ICompareHelper, CompareHelper>();
         services.AddSingleton<IComparableDataRetriever, ComparableDataRetriever>();
 
         return services;
