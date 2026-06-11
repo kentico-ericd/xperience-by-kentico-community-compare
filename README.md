@@ -6,7 +6,7 @@
 
 ## Description
 
-This integration adds a new **Compare** tab to web pages, allowing users to view the differences between two versions of the current page. For example, you can compare the current Draft of a page to its Published version and view what fields and widgets have been updated, before approving the changes.
+This integration adds a new **Compare** tab to web pages and content items, allowing users to view the differences between two versions of the current item. For example, you can compare the current Draft of an item to its Published version and view what fields and widgets have been updated, before approving the changes.
 
 ## Library Version Matrix
 
