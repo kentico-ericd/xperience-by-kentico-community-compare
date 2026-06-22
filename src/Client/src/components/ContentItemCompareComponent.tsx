@@ -13,15 +13,19 @@ enum RenderState {
     Differences
 };
 
-/**
- * Displays the results of comparing two content items, or an error message if present.
- */
-export const ContentItemCompareComponent = (props: {
+interface ContentItemCompareComponentProps {
     comparableContentItemData?: ComparableContentItemData,
     showDiffs: boolean,
     isReversed: boolean,
-    fontSize: string
-}) => {
+    fontSize: string,
+    expandAllLines: boolean,
+    showLineNumbers: boolean
+};
+
+/**
+ * Displays the results of comparing two content items, or an error message if present.
+ */
+export const ContentItemCompareComponent = (props: ContentItemCompareComponentProps) => {
     const diffViewerStyles: ReactDiffViewerStylesOverride = {
         line: {
             fontSize: props.fontSize
@@ -97,10 +101,11 @@ export const ContentItemCompareComponent = (props: {
                         <ReactDiffViewer
                             summary={f.fieldName}
                             splitView={true}
-                            hideLineNumbers={true}
+                            hideLineNumbers={!props.showLineNumbers}
                             disableWordDiff={!props.showDiffs}
                             extraLinesSurroundingDiff={0}
                             styles={diffViewerStyles}
+                            showDiffOnly={!props.expandAllLines}
                             oldValue={props.isReversed ? f.targetValue : f.sourceValue}
                             newValue={props.isReversed ? f.sourceValue : f.targetValue} />
                     </Box>
@@ -114,10 +119,11 @@ export const ContentItemCompareComponent = (props: {
                         <ReactDiffViewer
                             summary='Widgets'
                             splitView={true}
-                            hideLineNumbers={true}
+                            hideLineNumbers={!props.showLineNumbers}
                             disableWordDiff={!props.showDiffs}
                             extraLinesSurroundingDiff={0}
                             styles={diffViewerStyles}
+                            showDiffOnly={!props.expandAllLines}
                             compareMethod={DiffMethod.JSON}
                             oldValue={props.isReversed ? props.comparableContentItemData.targetPageBuilderWidgets
                                 : props.comparableContentItemData.sourcePageBuilderWidgets}

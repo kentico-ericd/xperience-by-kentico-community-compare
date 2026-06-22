@@ -63,6 +63,8 @@ export const ContentItemCompareTabTemplate = (props: ContentItemComparisonProper
                         showDiffs={showDiffs}
                         isReversed={isReversed}
                         fontSize={props.options.fontSize}
+                        showLineNumbers={props.options.showLineNumbers}
+                        expandAllLines={props.options.expandAllLines}
                         comparableContentItemData={comparableData} />
                 </Stack>
             </Paper>
