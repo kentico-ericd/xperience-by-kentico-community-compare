@@ -1,5 +1,5 @@
 import { ComparableContentItemData } from "../types";
-import ReactDiffViewer, { ReactDiffViewerStylesOverride } from "react-diff-viewer";
+import ReactDiffViewer, { DiffMethod, ReactDiffViewerStylesOverride } from "react-diff-viewer-continued";
 import { Row, LayoutAlignment, Headline, HeadlineSize, Stack, Column, Cols, Box, Spacing } from "@kentico/xperience-admin-components";
 
 enum RenderState {
@@ -22,9 +22,6 @@ export const ContentItemCompareComponent = (props: {
     isReversed: boolean
 }) => {
     const diffViewerStyles: ReactDiffViewerStylesOverride = {
-        line: {
-            fontSize: '12px'
-        },
         diffContainer: {
             tableLayout: 'fixed',
             wordWrap: 'break-word'
@@ -95,6 +92,7 @@ export const ContentItemCompareComponent = (props: {
                             <ReactDiffViewer
                                 splitView={true}
                                 hideLineNumbers={true}
+                                hideSummary={true}
                                 disableWordDiff={!props.showDiffs}
                                 extraLinesSurroundingDiff={0}
                                 styles={diffViewerStyles}
@@ -114,9 +112,11 @@ export const ContentItemCompareComponent = (props: {
                             <ReactDiffViewer
                                 splitView={true}
                                 hideLineNumbers={true}
+                                hideSummary={true}
                                 disableWordDiff={!props.showDiffs}
                                 extraLinesSurroundingDiff={0}
                                 styles={diffViewerStyles}
+                                compareMethod={DiffMethod.JSON}
                                 oldValue={props.isReversed ? props.comparableContentItemData.targetPageBuilderWidgets
                                     : props.comparableContentItemData.sourcePageBuilderWidgets}
                                 newValue={props.isReversed ? props.comparableContentItemData.sourcePageBuilderWidgets

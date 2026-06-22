@@ -1,4 +1,7 @@
-﻿using CMS.ContentEngine;
+﻿using AngleSharp.Html;
+using AngleSharp.Html.Parser;
+
+using CMS.ContentEngine;
 using CMS.ContentEngine.Internal;
 using CMS.DataEngine;
 using CMS.FormEngine;
@@ -6,6 +9,7 @@ using CMS.Helpers;
 using CMS.Websites;
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using XperienceCommunity.Compare.Models;
 
@@ -85,8 +89,12 @@ public class ComparableDataRetriever(
         }
         else
         {
-            comparableContentItemData.SourcePageBuilderWidgets = sourceItemData.PageBuilderWidgets;
-            comparableContentItemData.TargetPageBuilderWidgets = targetItemData.PageBuilderWidgets;
+            // Pretty print JSON
+            string sourceJson = JToken.Parse(sourceItemData.PageBuilderWidgets).ToString(Formatting.Indented);
+            string targetJson = JToken.Parse(targetItemData.PageBuilderWidgets).ToString(Formatting.Indented);
+
+            comparableContentItemData.SourcePageBuilderWidgets = sourceJson;
+            comparableContentItemData.TargetPageBuilderWidgets = targetJson;
         }
 
         return comparableContentItemData;
@@ -169,9 +177,9 @@ public class ComparableDataRetriever(
             return null;
         }
 
-        // Convert content item references (GUIDs) to display names
         if (field.DataType == FieldDataType.ContentItemReference)
         {
+            // Convert content item references (GUIDs) to display names
             var references = JsonConvert.DeserializeObject<List<ContentItemReference>>(stringRepresentation)
                 ?? throw new InvalidOperationException($"Failed to deserialize content item references for field {field.Name}.");
             List<string> referenceNames = [];
@@ -182,6 +190,19 @@ public class ComparableDataRetriever(
             }
 
             return string.Join(", ", referenceNames);
+        }
+        else if (field.DataType == FieldDataType.RichTextHTML)
+        {
+            // Pretty print rich text
+            using var document = await new HtmlParser().ParseDocumentAsync(stringRepresentation, ct);
+            using var writer = new StringWriter();
+            document.ToHtml(writer, new PrettyMarkupFormatter
+            {
+                Indentation = "  ",
+                NewLine = Environment.NewLine
+            });
+
+            return writer.ToString();
         }
 
         return stringRepresentation;
