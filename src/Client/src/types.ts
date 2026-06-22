@@ -1,5 +1,9 @@
 import { IconName } from "@kentico/xperience-admin-components";
 
+export interface CompareModuleOptions {
+    fontSize: string;
+}
+
 export interface ContentItemCompareRequest {
     contentItemID: number;
     contentTypeClassID: number;

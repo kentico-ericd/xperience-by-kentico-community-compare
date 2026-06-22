@@ -20,6 +20,7 @@ namespace XperienceCommunity.Compare.UIPages;
 /// Template for the content item "Compare" tab.
 /// </summary>
 public class ContentItemCompareTab(
+    CompareModuleOptions compareModuleOptions,
     ICompareHelper compareHelper,
     IEventLogService eventLogService,
     IComparableDataRetriever comparableDataRetriever) : Page<ContentItemComparisonProperties>
@@ -35,6 +36,7 @@ public class ContentItemCompareTab(
     public override async Task<ContentItemComparisonProperties> ConfigureTemplateProperties(ContentItemComparisonProperties properties)
     {
         properties.PreventRefetch = true;
+        properties.Options = compareModuleOptions;
         properties.ContentItemID = ItemID;
 
         // Get languages

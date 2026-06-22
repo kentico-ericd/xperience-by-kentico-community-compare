@@ -3,7 +3,7 @@ import { usePageCommandProvider } from "@kentico/xperience-admin-base";
 import { Paper, Spacing, Stack } from "@kentico/xperience-admin-components";
 import { ContentItemCompareHeader } from "../components/ContentItemCompareHeader";
 import { ContentItemCompareComponent } from "../components/ContentItemCompareComponent";
-import { BasicContentItem, ComparableContentItemData, ContentItemCompareRequest, ContentLanguage } from "../types";
+import { BasicContentItem, ComparableContentItemData, CompareModuleOptions, ContentItemCompareRequest, ContentLanguage } from "../types";
 
 const Commands = {
     /** Command to compare the selected content items. */
@@ -16,6 +16,7 @@ interface ContentItemComparisonProperties {
     readonly sourceContentItem: BasicContentItem;
     readonly languages: ContentLanguage[];
     readonly compareTargets: BasicContentItem[];
+    readonly options: CompareModuleOptions;
 };
 
 /**
@@ -61,6 +62,7 @@ export const ContentItemCompareTabTemplate = (props: ContentItemComparisonProper
                     <ContentItemCompareComponent
                         showDiffs={showDiffs}
                         isReversed={isReversed}
+                        fontSize={props.options.fontSize}
                         comparableContentItemData={comparableData} />
                 </Stack>
             </Paper>

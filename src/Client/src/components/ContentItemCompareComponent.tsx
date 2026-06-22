@@ -19,9 +19,16 @@ enum RenderState {
 export const ContentItemCompareComponent = (props: {
     comparableContentItemData?: ComparableContentItemData,
     showDiffs: boolean,
-    isReversed: boolean
+    isReversed: boolean,
+    fontSize: string
 }) => {
     const diffViewerStyles: ReactDiffViewerStylesOverride = {
+        line: {
+            fontSize: props.fontSize
+        },
+        summary: {
+            fontSize: props.fontSize
+        },
         diffContainer: {
             tableLayout: 'fixed',
             wordWrap: 'break-word'
