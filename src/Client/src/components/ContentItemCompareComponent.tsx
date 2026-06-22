@@ -87,18 +87,15 @@ export const ContentItemCompareComponent = (props: {
                 props.comparableContentItemData.fields.map(f =>
                 <Column cols={Cols.Col12}>
                     <Box spacing={Spacing.L}>
-                        <Row alignX={LayoutAlignment.Center}>
-                            <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
-                            <ReactDiffViewer
-                                splitView={true}
-                                hideLineNumbers={true}
-                                hideSummary={true}
-                                disableWordDiff={!props.showDiffs}
-                                extraLinesSurroundingDiff={0}
-                                styles={diffViewerStyles}
-                                oldValue={props.isReversed ? f.targetValue : f.sourceValue}
-                                newValue={props.isReversed ? f.sourceValue : f.targetValue} />
-                        </Row>
+                        <ReactDiffViewer
+                            summary={f.fieldName}
+                            splitView={true}
+                            hideLineNumbers={true}
+                            disableWordDiff={!props.showDiffs}
+                            extraLinesSurroundingDiff={0}
+                            styles={diffViewerStyles}
+                            oldValue={props.isReversed ? f.targetValue : f.sourceValue}
+                            newValue={props.isReversed ? f.sourceValue : f.targetValue} />
                     </Box>
                 </Column>
             )}
@@ -107,21 +104,18 @@ export const ContentItemCompareComponent = (props: {
                 props.comparableContentItemData.targetPageBuilderWidgets &&
                 <Column cols={Cols.Col12}>
                     <Box spacing={Spacing.L}>
-                        <Row alignX={LayoutAlignment.Center}>
-                            <Headline size={HeadlineSize.M}>Widgets</Headline>
-                            <ReactDiffViewer
-                                splitView={true}
-                                hideLineNumbers={true}
-                                hideSummary={true}
-                                disableWordDiff={!props.showDiffs}
-                                extraLinesSurroundingDiff={0}
-                                styles={diffViewerStyles}
-                                compareMethod={DiffMethod.JSON}
-                                oldValue={props.isReversed ? props.comparableContentItemData.targetPageBuilderWidgets
-                                    : props.comparableContentItemData.sourcePageBuilderWidgets}
-                                newValue={props.isReversed ? props.comparableContentItemData.sourcePageBuilderWidgets
-                                    : props.comparableContentItemData.targetPageBuilderWidgets} />
-                        </Row>
+                        <ReactDiffViewer
+                            summary='Widgets'
+                            splitView={true}
+                            hideLineNumbers={true}
+                            disableWordDiff={!props.showDiffs}
+                            extraLinesSurroundingDiff={0}
+                            styles={diffViewerStyles}
+                            compareMethod={DiffMethod.JSON}
+                            oldValue={props.isReversed ? props.comparableContentItemData.targetPageBuilderWidgets
+                                : props.comparableContentItemData.sourcePageBuilderWidgets}
+                            newValue={props.isReversed ? props.comparableContentItemData.sourcePageBuilderWidgets
+                                : props.comparableContentItemData.targetPageBuilderWidgets} />
                     </Box>
                 </Column>
             }
