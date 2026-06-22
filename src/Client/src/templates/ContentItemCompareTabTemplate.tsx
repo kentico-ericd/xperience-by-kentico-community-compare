@@ -28,6 +28,7 @@ export const ContentItemCompareTabTemplate = (props: ContentItemComparisonProper
         sourceContentItem: props.sourceContentItem
     };
     const [showDiffs, setShowDiffs] = useState(false);
+    const [isReversed, setIsReversed] = useState(false);
     const [targetContentItem, setTargetContentItem] = useState<BasicContentItem>();
     const [comparableData, setComparableData] = useState<ComparableContentItemData>();
     const { executeCommand } = usePageCommandProvider();
@@ -43,7 +44,7 @@ export const ContentItemCompareTabTemplate = (props: ContentItemComparisonProper
         const data = await executeCommand<ComparableContentItemData, ContentItemCompareRequest>(Commands.Compare, compareRequest);
         setComparableData(data);
     };
-
+    console.log(isReversed);
     return (
         <>
             <Paper fullHeight>
@@ -52,11 +53,14 @@ export const ContentItemCompareTabTemplate = (props: ContentItemComparisonProper
                         languages={props.languages}
                         compareTargets={props.compareTargets}
                         sourceContentItem={props.sourceContentItem}
+                        isReversed={isReversed}
+                        onReverseChange={setIsReversed}
                         onCompareClick={compare}
                         onShowDiffChange={setShowDiffs}
                         onTargetContentItemChange={setTargetContentItem} />
                     <ContentItemCompareComponent
-                        showDiffs={showDiffs} 
+                        showDiffs={showDiffs}
+                        isReversed={isReversed}
                         comparableContentItemData={comparableData} />
                 </Stack>
             </Paper>

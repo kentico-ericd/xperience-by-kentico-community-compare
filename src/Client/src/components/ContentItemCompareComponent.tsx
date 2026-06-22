@@ -18,7 +18,8 @@ enum RenderState {
  */
 export const ContentItemCompareComponent = (props: {
     comparableContentItemData?: ComparableContentItemData,
-    showDiffs: boolean
+    showDiffs: boolean,
+    isReversed: boolean
 }) => {
     const diffViewerStyles: ReactDiffViewerStylesOverride = {
         line: {
@@ -97,8 +98,8 @@ export const ContentItemCompareComponent = (props: {
                                 disableWordDiff={!props.showDiffs}
                                 extraLinesSurroundingDiff={0}
                                 styles={diffViewerStyles}
-                                oldValue={f.sourceValue}
-                                newValue={f.targetValue} />
+                                oldValue={props.isReversed ? f.targetValue : f.sourceValue}
+                                newValue={props.isReversed ? f.sourceValue : f.targetValue} />
                         </Row>
                     </Box>
                 </Column>
@@ -116,8 +117,10 @@ export const ContentItemCompareComponent = (props: {
                                 disableWordDiff={!props.showDiffs}
                                 extraLinesSurroundingDiff={0}
                                 styles={diffViewerStyles}
-                                oldValue={props.comparableContentItemData.sourcePageBuilderWidgets}
-                                newValue={props.comparableContentItemData.targetPageBuilderWidgets} />
+                                oldValue={props.isReversed ? props.comparableContentItemData.targetPageBuilderWidgets
+                                    : props.comparableContentItemData.sourcePageBuilderWidgets}
+                                newValue={props.isReversed ? props.comparableContentItemData.sourcePageBuilderWidgets
+                                    : props.comparableContentItemData.targetPageBuilderWidgets} />
                         </Row>
                     </Box>
                 </Column>
