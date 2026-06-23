@@ -26,9 +26,11 @@ interface ContentItemCompareHeaderProperties {
     sourceContentItem: BasicContentItem,
     languages: ContentLanguage[],
     compareTargets: BasicContentItem[],
+    isReversed: boolean,
     onShowDiffChange?: (checked: boolean) => void,
     onCompareClick?: () => Promise<void>,
-    onTargetContentItemChange?: (item: BasicContentItem) => void
+    onTargetContentItemChange?: (item: BasicContentItem) => void,
+    onReverseChange?: (isReversed: boolean) => void
 };
 
 /**
@@ -104,6 +106,93 @@ export const ContentItemCompareHeader = (props: ContentItemCompareHeaderProperti
         return new Date(Date.parse(dateTime)).toLocaleString();
     };
 
+    const renderSourceContentItem = () =>
+        <>
+            <Headline size={HeadlineSize.M}>This item</Headline>
+            <div style={{ color: 'black' }}>
+                <Inline>
+                    <Icon name={props.sourceContentItem.language.flagName} />
+                    &nbsp;{props.sourceContentItem.language.languageDisplayName}
+                    &nbsp;{getVersionStatusName(props.sourceContentItem.versionStatus)}
+                </Inline>
+            </div>
+            <div style={{ color: 'black' }}>Last modified: {getTimestamp(props.sourceContentItem.lastModified)}</div>
+            <div style={{ color: 'black' }}>Modified by: {props.sourceContentItem.lastModifiedByUser ?? 'N/A'}</div>
+        </>
+
+
+    const renderTargetContentItem = () =>
+        <>
+            <Headline size={HeadlineSize.M}>Target item</Headline>
+            {(() => {
+                const targetContentItem = getTargetContentItem();
+                if (!targetContentItem) {
+                    return <div style={{ color: 'black' }}>No target item selected</div>;
+                }
+
+                {/* Element re-renders when language or version status changes, then propogates the new target item */ }
+                props.onTargetContentItemChange?.(targetContentItem);
+
+                return (
+                    <>
+                        <div style={{ color: 'black' }}>
+                            <Inline>
+                                <Icon name={targetContentItem.language.flagName} />
+                                &nbsp;{targetContentItem.language.languageDisplayName}
+                                &nbsp;{getVersionStatusName(targetContentItem.versionStatus)}
+                            </Inline>
+                        </div>
+                        <div style={{ color: 'black' }}>Last modified: {getTimestamp(targetContentItem.lastModified)}</div>
+                        <div style={{ color: 'black' }}>Modified by: {targetContentItem.lastModifiedByUser ?? 'N/A'}</div>
+                    </>
+                );
+            })()}
+
+            <DropDownActionMenu
+                renderTrigger={(ref, onTriggerClick) => (
+                    <Button
+                        size={ButtonSize.XS}
+                        color={ButtonColor.Secondary}
+                        buttonRef={ref as RefObject<HTMLButtonElement>}
+                        onClick={() => onTriggerClick()}
+                        label='Select' />
+                )}>
+                {props.languages.map((language) => (
+                    <MenuItemWithSubmenu
+                        primaryLabel={language.languageDisplayName}
+                        disabled={!variantExistsInLanguageAndVersionStatus(
+                            language.languageName, [VersionStatus.InitialDraft, VersionStatus.Draft, VersionStatus.Published])}
+                        leadingElement={{
+                            type: 'icon',
+                            element: <Icon name={language.flagName} />
+                        }}
+                        submenuContent={
+                            <SelectMenu>
+                                <MenuItem
+                                    primaryLabel='Draft'
+                                    value={VersionStatus.Draft.toString()}
+                                    disabled={!variantExistsInLanguageAndVersionStatus(
+                                        language.languageName, [VersionStatus.InitialDraft, VersionStatus.Draft])}
+                                    onClick={() => {
+                                        setTargetLanguage(language);
+                                        setTargetVersionStatus(VersionStatus.Draft);
+                                    }} />
+                                <MenuItem
+                                    primaryLabel='Published'
+                                    value={VersionStatus.Published.toString()}
+                                    disabled={!variantExistsInLanguageAndVersionStatus(
+                                        language.languageName, [VersionStatus.Published])}
+                                    onClick={() => {
+                                        setTargetLanguage(language);
+                                        setTargetVersionStatus(VersionStatus.Published);
+                                    }} />
+                            </SelectMenu>
+                        }
+                    />
+                ))}
+            </DropDownActionMenu>
+        </>
+
     return (
         <>
             <Row>
@@ -111,16 +200,7 @@ export const ContentItemCompareHeader = (props: ContentItemCompareHeaderProperti
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
                         <Stack spacing={Spacing.S}>
-                            <Headline size={HeadlineSize.M}>This item</Headline>
-                            <div style={{ color: 'black' }}>
-                                <Inline>
-                                    <Icon name={props.sourceContentItem.language.flagName} />
-                                    &nbsp;{props.sourceContentItem.language.languageDisplayName}
-                                    &nbsp;{getVersionStatusName(props.sourceContentItem.versionStatus)}
-                                </Inline>
-                            </div>
-                            <div style={{ color: 'black' }}>Last modified: {getTimestamp(props.sourceContentItem.lastModified)}</div>
-                            <div style={{ color: 'black' }}>Modified by: {props.sourceContentItem.lastModifiedByUser ?? 'N/A'}</div>
+                            {props.isReversed ? renderTargetContentItem() : renderSourceContentItem()}
                         </Stack>
                     </Box>
                 </Column>
@@ -137,9 +217,18 @@ export const ContentItemCompareHeader = (props: ContentItemCompareHeaderProperti
                                     color={ButtonColor.Primary}
                                     onClick={compareClick}
                                     buttonRef={compareButtonRef} />
-                                <Checkbox
-                                    label='Show diffs'
-                                    onChange={(_, checked) => props.onShowDiffChange?.(checked)} />
+                                <Inline>
+                                    <Button
+                                        borderless
+                                        title='Reverse order'
+                                        icon='xp-arrow-u-left'
+                                        size={ButtonSize.XS}
+                                        color={ButtonColor.Tertiary}
+                                        onClick={() => props.onReverseChange?.(!props.isReversed)} />
+                                    <Checkbox
+                                        label='Show diffs'
+                                        onChange={(_, checked) => props.onShowDiffChange?.(checked)} />
+                                </Inline>
                             </Stack>
                         </Row>
                     </Box>
@@ -149,74 +238,7 @@ export const ContentItemCompareHeader = (props: ContentItemCompareHeaderProperti
                 <Column cols={Cols.Col4}>
                     <Box spacing={Spacing.L}>
                         <Stack align={LayoutAlignment.End} spacing={Spacing.S}>
-                            <Headline size={HeadlineSize.M}>Target item</Headline>
-                            {(() => {
-                                const targetContentItem = getTargetContentItem();
-                                if (!targetContentItem) {
-                                    return <div style={{ color: 'black' }}>No target item selected</div>;
-                                }
-
-                                {/* Element re-renders when language or version status changes, then propogates the new target item */ }
-                                props.onTargetContentItemChange?.(targetContentItem);
-
-                                return (
-                                    <>
-                                        <div style={{ color: 'black' }}>
-                                            <Inline>
-                                                <Icon name={targetContentItem.language.flagName} />
-                                                &nbsp;{targetContentItem.language.languageDisplayName}
-                                                &nbsp;{getVersionStatusName(targetContentItem.versionStatus)}
-                                            </Inline>
-                                        </div>
-                                        <div style={{ color: 'black' }}>Last modified: {getTimestamp(targetContentItem.lastModified)}</div>
-                                        <div style={{ color: 'black' }}>Modified by: {targetContentItem.lastModifiedByUser ?? 'N/A'}</div>
-                                    </>
-                                );
-                            })()}
-
-                            <DropDownActionMenu
-                                renderTrigger={(ref, onTriggerClick) => (
-                                    <Button
-                                        size={ButtonSize.XS}
-                                        color={ButtonColor.Secondary}
-                                        buttonRef={ref as RefObject<HTMLButtonElement>}
-                                        onClick={() => onTriggerClick()}
-                                        label='Select' />
-                                )}>
-                                {props.languages.map((language) => (
-                                    <MenuItemWithSubmenu
-                                        primaryLabel={language.languageDisplayName}
-                                        disabled={!variantExistsInLanguageAndVersionStatus(
-                                            language.languageName, [VersionStatus.InitialDraft, VersionStatus.Draft, VersionStatus.Published])}
-                                        leadingElement={{
-                                            type: 'icon',
-                                            element: <Icon name={language.flagName} />
-                                        }}
-                                        submenuContent={
-                                            <SelectMenu>
-                                                <MenuItem
-                                                    primaryLabel='Draft'
-                                                    value={VersionStatus.Draft.toString()}
-                                                    disabled={!variantExistsInLanguageAndVersionStatus(
-                                                        language.languageName, [VersionStatus.InitialDraft, VersionStatus.Draft])}
-                                                    onClick={() => {
-                                                        setTargetLanguage(language);
-                                                        setTargetVersionStatus(VersionStatus.Draft);
-                                                    }} />
-                                                <MenuItem
-                                                    primaryLabel='Published'
-                                                    value={VersionStatus.Published.toString()}
-                                                    disabled={!variantExistsInLanguageAndVersionStatus(
-                                                        language.languageName, [VersionStatus.Published])}
-                                                    onClick={() => {
-                                                        setTargetLanguage(language);
-                                                        setTargetVersionStatus(VersionStatus.Published);
-                                                    }} />
-                                            </SelectMenu>
-                                        }
-                                    />
-                                ))}
-                            </DropDownActionMenu>
+                            {props.isReversed ? renderSourceContentItem() : renderTargetContentItem()}
                         </Stack>
                     </Box>
                 </Column>

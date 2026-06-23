@@ -20,6 +20,7 @@ namespace XperienceCommunity.Compare.UIPages;
 /// Template for the content item "Compare" tab.
 /// </summary>
 public class ContentItemCompareTab(
+    CompareModuleOptions compareModuleOptions,
     ICompareHelper compareHelper,
     IEventLogService eventLogService,
     IComparableDataRetriever comparableDataRetriever) : Page<ContentItemComparisonProperties>
@@ -34,7 +35,13 @@ public class ContentItemCompareTab(
 
     public override async Task<ContentItemComparisonProperties> ConfigureTemplateProperties(ContentItemComparisonProperties properties)
     {
+        if (!compareModuleOptions.EnableContentHub)
+        {
+            throw new ForbiddenAccessException("Compare module is not enabled for the Content Hub.");
+        }
+
         properties.PreventRefetch = true;
+        properties.Options = compareModuleOptions;
         properties.ContentItemID = ItemID;
 
         // Get languages

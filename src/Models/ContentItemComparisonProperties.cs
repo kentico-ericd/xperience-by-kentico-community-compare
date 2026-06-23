@@ -35,4 +35,10 @@ public class ContentItemComparisonProperties : WebPageBaseClientProperties
     /// A collection of content items available for comparison.
     /// </summary>
     public IEnumerable<BasicContentItem> CompareTargets { get; set; } = [];
+
+
+    /// <summary>
+    /// The options for the compare module set during application startup.
+    /// </summary>
+    public CompareModuleOptions Options { get; set; } = new();
 }

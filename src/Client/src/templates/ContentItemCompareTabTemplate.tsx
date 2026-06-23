@@ -3,7 +3,7 @@ import { usePageCommandProvider } from "@kentico/xperience-admin-base";
 import { Paper, Spacing, Stack } from "@kentico/xperience-admin-components";
 import { ContentItemCompareHeader } from "../components/ContentItemCompareHeader";
 import { ContentItemCompareComponent } from "../components/ContentItemCompareComponent";
-import { BasicContentItem, ComparableContentItemData, ContentItemCompareRequest, ContentLanguage } from "../types";
+import { BasicContentItem, ComparableContentItemData, CompareModuleOptions, ContentItemCompareRequest, ContentLanguage } from "../types";
 
 const Commands = {
     /** Command to compare the selected content items. */
@@ -16,6 +16,7 @@ interface ContentItemComparisonProperties {
     readonly sourceContentItem: BasicContentItem;
     readonly languages: ContentLanguage[];
     readonly compareTargets: BasicContentItem[];
+    readonly options: CompareModuleOptions;
 };
 
 /**
@@ -28,6 +29,7 @@ export const ContentItemCompareTabTemplate = (props: ContentItemComparisonProper
         sourceContentItem: props.sourceContentItem
     };
     const [showDiffs, setShowDiffs] = useState(false);
+    const [isReversed, setIsReversed] = useState(false);
     const [targetContentItem, setTargetContentItem] = useState<BasicContentItem>();
     const [comparableData, setComparableData] = useState<ComparableContentItemData>();
     const { executeCommand } = usePageCommandProvider();
@@ -52,11 +54,17 @@ export const ContentItemCompareTabTemplate = (props: ContentItemComparisonProper
                         languages={props.languages}
                         compareTargets={props.compareTargets}
                         sourceContentItem={props.sourceContentItem}
+                        isReversed={isReversed}
+                        onReverseChange={setIsReversed}
                         onCompareClick={compare}
                         onShowDiffChange={setShowDiffs}
                         onTargetContentItemChange={setTargetContentItem} />
                     <ContentItemCompareComponent
-                        showDiffs={showDiffs} 
+                        showDiffs={showDiffs}
+                        isReversed={isReversed}
+                        fontSize={props.options.fontSize}
+                        showLineNumbers={props.options.showLineNumbers}
+                        expandAllLines={props.options.expandAllLines}
                         comparableContentItemData={comparableData} />
                 </Stack>
             </Paper>

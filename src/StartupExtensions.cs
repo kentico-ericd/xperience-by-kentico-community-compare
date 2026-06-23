@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
+using XperienceCommunity.Compare.Models;
 using XperienceCommunity.Compare.Services;
 
 namespace XperienceCommunity.Compare;
@@ -12,8 +13,15 @@ public static class StartupExtensions
     /// <summary>
     /// Registers services required by the module.
     /// </summary>
-    public static IServiceCollection AddXperienceCompare(this IServiceCollection services)
+    public static IServiceCollection AddXperienceCompare(this IServiceCollection services, Action<CompareModuleOptions>? configureOptions = null)
     {
+        var options = new CompareModuleOptions();
+        if (configureOptions is not null)
+        {
+            configureOptions(options);
+        }
+
+        services.AddSingleton(options);
         services.AddSingleton<ICompareHelper, CompareHelper>();
         services.AddSingleton<IComparableDataRetriever, ComparableDataRetriever>();
 

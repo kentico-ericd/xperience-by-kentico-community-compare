@@ -25,6 +25,7 @@ namespace XperienceCommunity.Compare.UIPages;
 /// Template for the web page "Compare" tab.
 /// </summary>
 public class WebPageCompareTab(
+    CompareModuleOptions compareModuleOptions,
     ICompareHelper compareHelper,
     IEventLogService eventLogService,
     IComparableDataRetriever comparableDataRetriever,
@@ -41,6 +42,11 @@ public class WebPageCompareTab(
 
     public override async Task<ContentItemComparisonProperties> ConfigureTemplateProperties(ContentItemComparisonProperties properties)
     {
+        if (!compareModuleOptions.EnableWebPages)
+        {
+            throw new ForbiddenAccessException("Compare module is not enabled for web pages.");
+        }
+
         await base.ConfigureTemplateProperties(properties);
 
         if (WebPageIdentifier.WebPageItemID == WebPageConstants.ROOT_NODE_ID)
@@ -101,6 +107,7 @@ public class WebPageCompareTab(
     private async Task SetProperties(ContentItemComparisonProperties properties)
     {
         properties.PreventRefetch = true;
+        properties.Options = compareModuleOptions;
 
         // Get languages
         properties.Languages = await compareHelper.GetContentLanguagesAsync(CancellationToken.None);

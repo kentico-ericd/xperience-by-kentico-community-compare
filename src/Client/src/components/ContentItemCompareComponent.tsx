@@ -1,5 +1,5 @@
 import { ComparableContentItemData } from "../types";
-import ReactDiffViewer, { ReactDiffViewerStylesOverride } from "react-diff-viewer";
+import ReactDiffViewer, { DiffMethod, ReactDiffViewerStylesOverride } from "react-diff-viewer-continued";
 import { Row, LayoutAlignment, Headline, HeadlineSize, Stack, Column, Cols, Box, Spacing } from "@kentico/xperience-admin-components";
 
 enum RenderState {
@@ -13,16 +13,26 @@ enum RenderState {
     Differences
 };
 
+interface ContentItemCompareComponentProps {
+    comparableContentItemData?: ComparableContentItemData,
+    showDiffs: boolean,
+    isReversed: boolean,
+    fontSize: string,
+    expandAllLines: boolean,
+    showLineNumbers: boolean
+};
+
 /**
  * Displays the results of comparing two content items, or an error message if present.
  */
-export const ContentItemCompareComponent = (props: {
-    comparableContentItemData?: ComparableContentItemData,
-    showDiffs: boolean
-}) => {
+export const ContentItemCompareComponent = (props: ContentItemCompareComponentProps) => {
     const diffViewerStyles: ReactDiffViewerStylesOverride = {
         line: {
-            fontSize: '12px'
+            fontSize: props.fontSize
+        },
+        summary: {
+            fontSize: props.fontSize,
+            fontWeight: 'bold'
         },
         diffContainer: {
             tableLayout: 'fixed',
@@ -31,7 +41,7 @@ export const ContentItemCompareComponent = (props: {
         variables: {
             light: {
                 addedBackground: '#fafbfc',
-                removedBackground: '#fafbfc',
+                removedBackground: '#fafbfc'
             }
         },
     };
@@ -89,17 +99,16 @@ export const ContentItemCompareComponent = (props: {
                 props.comparableContentItemData.fields.map(f =>
                 <Column cols={Cols.Col12}>
                     <Box spacing={Spacing.L}>
-                        <Row alignX={LayoutAlignment.Center}>
-                            <Headline size={HeadlineSize.M}>{f.fieldName}</Headline>
-                            <ReactDiffViewer
-                                splitView={true}
-                                hideLineNumbers={true}
-                                disableWordDiff={!props.showDiffs}
-                                extraLinesSurroundingDiff={0}
-                                styles={diffViewerStyles}
-                                oldValue={f.sourceValue}
-                                newValue={f.targetValue} />
-                        </Row>
+                        <ReactDiffViewer
+                            summary={f.fieldName}
+                            splitView={true}
+                            hideLineNumbers={!props.showLineNumbers}
+                            disableWordDiff={!props.showDiffs}
+                            extraLinesSurroundingDiff={0}
+                            styles={diffViewerStyles}
+                            showDiffOnly={!props.expandAllLines}
+                            oldValue={props.isReversed ? f.targetValue : f.sourceValue}
+                            newValue={props.isReversed ? f.sourceValue : f.targetValue} />
                     </Box>
                 </Column>
             )}
@@ -108,17 +117,19 @@ export const ContentItemCompareComponent = (props: {
                 props.comparableContentItemData.targetPageBuilderWidgets &&
                 <Column cols={Cols.Col12}>
                     <Box spacing={Spacing.L}>
-                        <Row alignX={LayoutAlignment.Center}>
-                            <Headline size={HeadlineSize.M}>Widgets</Headline>
-                            <ReactDiffViewer
-                                splitView={true}
-                                hideLineNumbers={true}
-                                disableWordDiff={!props.showDiffs}
-                                extraLinesSurroundingDiff={0}
-                                styles={diffViewerStyles}
-                                oldValue={props.comparableContentItemData.sourcePageBuilderWidgets}
-                                newValue={props.comparableContentItemData.targetPageBuilderWidgets} />
-                        </Row>
+                        <ReactDiffViewer
+                            summary='Widgets'
+                            splitView={true}
+                            hideLineNumbers={!props.showLineNumbers}
+                            disableWordDiff={!props.showDiffs}
+                            extraLinesSurroundingDiff={0}
+                            styles={diffViewerStyles}
+                            showDiffOnly={!props.expandAllLines}
+                            compareMethod={DiffMethod.JSON}
+                            oldValue={props.isReversed ? props.comparableContentItemData.targetPageBuilderWidgets
+                                : props.comparableContentItemData.sourcePageBuilderWidgets}
+                            newValue={props.isReversed ? props.comparableContentItemData.sourcePageBuilderWidgets
+                                : props.comparableContentItemData.targetPageBuilderWidgets} />
                     </Box>
                 </Column>
             }
