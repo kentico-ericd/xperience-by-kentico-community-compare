@@ -189,7 +189,7 @@ public class ComparableDataRetriever(
                 referenceNames.Add($"{name} ({reference})");
             }
 
-            return string.Join(", ", referenceNames);
+            return string.Join(Environment.NewLine, referenceNames);
         }
         else if (field.DataType == FieldDataType.RichTextHTML)
         {

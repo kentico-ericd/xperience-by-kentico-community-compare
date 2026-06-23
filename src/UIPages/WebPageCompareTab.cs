@@ -42,6 +42,11 @@ public class WebPageCompareTab(
 
     public override async Task<ContentItemComparisonProperties> ConfigureTemplateProperties(ContentItemComparisonProperties properties)
     {
+        if (!compareModuleOptions.EnableWebPages)
+        {
+            throw new ForbiddenAccessException("Compare module is not enabled for web pages.");
+        }
+
         await base.ConfigureTemplateProperties(properties);
 
         if (WebPageIdentifier.WebPageItemID == WebPageConstants.ROOT_NODE_ID)

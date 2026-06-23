@@ -31,7 +31,8 @@ export const ContentItemCompareComponent = (props: ContentItemCompareComponentPr
             fontSize: props.fontSize
         },
         summary: {
-            fontSize: props.fontSize
+            fontSize: props.fontSize,
+            fontWeight: 'bold'
         },
         diffContainer: {
             tableLayout: 'fixed',
@@ -40,7 +41,7 @@ export const ContentItemCompareComponent = (props: ContentItemCompareComponentPr
         variables: {
             light: {
                 addedBackground: '#fafbfc',
-                removedBackground: '#fafbfc',
+                removedBackground: '#fafbfc'
             }
         },
     };

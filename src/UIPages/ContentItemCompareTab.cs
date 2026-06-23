@@ -35,6 +35,11 @@ public class ContentItemCompareTab(
 
     public override async Task<ContentItemComparisonProperties> ConfigureTemplateProperties(ContentItemComparisonProperties properties)
     {
+        if (!compareModuleOptions.EnableContentHub)
+        {
+            throw new ForbiddenAccessException("Compare module is not enabled for the Content Hub.");
+        }
+
         properties.PreventRefetch = true;
         properties.Options = compareModuleOptions;
         properties.ContentItemID = ItemID;
