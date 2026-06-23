@@ -45,7 +45,7 @@ export const ContentItemCompareTabTemplate = (props: ContentItemComparisonProper
         const data = await executeCommand<ComparableContentItemData, ContentItemCompareRequest>(Commands.Compare, compareRequest);
         setComparableData(data);
     };
-    console.log(isReversed);
+
     return (
         <>
             <Paper fullHeight>
